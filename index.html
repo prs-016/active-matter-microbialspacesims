@@ -443,11 +443,203 @@ select:focus { border-color: var(--acc1); }
 @keyframes spin { to { transform: rotate(360deg); } }
 .py-overlay p { color: var(--fg2); font-size: 0.85rem; }
 
+/* ── 3D Sun-to-Planet Simulation ───────────────── */
+.sim3d-section {
+  padding: 32px 24px;
+  border-top: 1px solid var(--border);
+  background:
+    radial-gradient(circle at 18% 28%, rgba(255,166,87,0.13), transparent 28%),
+    radial-gradient(circle at 78% 58%, rgba(88,166,255,0.12), transparent 26%),
+    linear-gradient(180deg, #080c14 0%, var(--bg) 100%);
+}
+.sim3d-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  min-height: 760px;
+  max-height: 900px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: rgba(13,17,23,0.88);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+}
+.sim3d-stage {
+  position: relative;
+  min-height: 760px;
+  overflow: hidden;
+  background: #02050d;
+  border-right: 1px solid var(--border);
+}
+.sim3d-mount,
+.sim3d-mount canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.sim3d-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: rgba(2,5,13,0.86);
+  color: var(--fg2);
+  backdrop-filter: blur(6px);
+}
+.sim3d-loading.hidden { display: none; }
+.sim3d-hud {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+}
+.sim3d-hud-card {
+  background: rgba(13,17,23,0.62);
+  border: 1px solid rgba(88,166,255,0.18);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 26px rgba(0,0,0,0.28);
+}
+.sim3d-hud-left { left: 16px; top: 16px; width: min(330px, calc(100% - 32px)); }
+.sim3d-hud-right { right: 16px; top: 16px; width: 230px; }
+.sim3d-eyebrow {
+  font-size: 0.64rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--acc5);
+  font-weight: 800;
+}
+.sim3d-title {
+  margin-top: 4px;
+  color: var(--fg);
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+.sim3d-copy {
+  margin-top: 4px;
+  color: var(--fg2);
+  font-size: 0.76rem;
+  line-height: 1.55;
+}
+.sim3d-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.sim3d-badge {
+  border: 1px solid rgba(230,237,243,0.12);
+  border-radius: 999px;
+  padding: 3px 8px;
+  background: rgba(255,255,255,0.04);
+  color: var(--fg2);
+  font-size: 0.66rem;
+  font-family: var(--font-mono);
+}
+.sim3d-badge.hot { color: var(--acc5); border-color: rgba(255,166,87,0.36); background: rgba(255,166,87,0.08); }
+.sim3d-badge.cool { color: var(--acc1); border-color: rgba(88,166,255,0.34); background: rgba(88,166,255,0.08); }
+.sim3d-badge.green { color: var(--acc2); border-color: rgba(63,185,80,0.34); background: rgba(63,185,80,0.08); }
+.sim3d-flare-meter {
+  height: 8px;
+  margin-top: 8px;
+  border-radius: 999px;
+  background: var(--bg4);
+  overflow: hidden;
+}
+.sim3d-flare-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--acc5), var(--acc3));
+  box-shadow: 0 0 16px rgba(247,129,102,0.65);
+  transition: width 0.12s linear;
+}
+.sim3d-metrics {
+  position: absolute;
+  z-index: 5;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  pointer-events: none;
+}
+.sim3d-metric {
+  min-width: 0;
+  border: 1px solid rgba(230,237,243,0.10);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  background: rgba(13,17,23,0.58);
+  backdrop-filter: blur(10px);
+}
+.sim3d-metric-label {
+  color: var(--fg3);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.sim3d-metric-value {
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.sim3d-controls {
+  background: var(--bg2);
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.sim3d-control-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.sim3d-control-grid .btn {
+  justify-content: center;
+  min-height: 32px;
+}
+.sim3d-inline-note {
+  color: var(--fg3);
+  font-size: 0.72rem;
+  line-height: 1.55;
+}
+.sim3d-robin-params.hidden { display: none; }
+
 /* ── Responsive ─────────────────────────────────── */
 @media (max-width: 900px) {
   .main-grid { grid-template-columns: 1fr; height: auto; max-height: none; }
   .sim-panel { height: 560px; border-right: none; border-bottom: 1px solid var(--border); }
   .ctrl-panel { max-height: 480px; }
+  .sim3d-shell { grid-template-columns: 1fr; min-height: 0; max-height: none; }
+  .sim3d-stage { min-height: 620px; border-right: none; border-bottom: 1px solid var(--border); }
+  .sim3d-controls { max-height: none; }
+  .sim3d-hud-right { left: 16px; right: auto; top: auto; bottom: 128px; width: min(260px, calc(100% - 32px)); }
+  .sim3d-metrics {
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .sim3d-metric {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: baseline;
+    gap: 10px;
+    padding: 7px 9px;
+  }
+  .sim3d-metric-label { font-size: 0.58rem; }
+  .sim3d-metric-value { font-size: 0.9rem; text-align: right; }
 }
 </style>
 </head>
@@ -464,6 +656,7 @@ select:focus { border-color: var(--acc1); }
   </div>
   <nav class="header-links">
     <a href="#sim">Live Sim</a>
+    <a href="#sim3d">3D Sim</a>
     <a href="#plots">Plots</a>
     <a href="#gs">Gray-Scott</a>
     <a href="#physics">Physics</a>
@@ -836,6 +1029,196 @@ select:focus { border-color: var(--acc1); }
       </div>
     </div>
 
+  </div>
+</section>
+
+<!-- ══ 3D SUN-TO-PLANET SIMULATION ═══════════════════════════════════════════ -->
+<section id="sim3d" class="sim3d-section">
+  <div class="plots-section-title">
+    <h2>3D Sun-to-Planet Simulation</h2>
+    <div class="section-line"></div>
+    <span style="font-size:0.75rem;color:var(--fg3)">Robin atmospheric landing · solar flare boundary forcing · 3D active swarm</span>
+  </div>
+
+  <div class="sim3d-shell">
+    <div class="sim3d-stage" id="sim3dStage">
+      <div id="sim3dMount" class="sim3d-mount"></div>
+      <div id="sim3dLoading" class="sim3d-loading">
+        <div class="spinner"></div>
+        <p>Loading Three.js orbital simulation...</p>
+      </div>
+
+      <div class="sim3d-hud sim3d-hud-left">
+        <div class="sim3d-hud-card">
+          <div class="sim3d-eyebrow">Photophoretic Transfer</div>
+          <div class="sim3d-title">Sun-Injected Swarm to Planetary Sink</div>
+          <div class="sim3d-copy">
+            A Dirichlet source at the star continuously injects particles.
+            The planet defaults to a Robin atmosphere, so arrival flux and
+            atmospheric trapping jointly decide landing success.
+          </div>
+          <div class="sim3d-badges">
+            <span class="sim3d-badge hot">Star: Dirichlet source</span>
+            <span class="sim3d-badge cool" id="sim3dPlanetBadge">Planet: Robin atmosphere</span>
+            <span class="sim3d-badge green" id="sim3dSpaceBadge">Space: Neumann reflective</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="sim3d-hud sim3d-hud-right">
+        <div class="sim3d-hud-card">
+          <div class="sim3d-eyebrow">Solar Flare Load</div>
+          <div class="sim3d-title" id="sim3dFlareText">0%</div>
+          <div class="sim3d-flare-meter"><div class="sim3d-flare-fill" id="sim3dFlareFill"></div></div>
+          <div class="sim3d-copy">Flares boost radiation, perturb orientation, and reduce Robin landing odds.</div>
+        </div>
+      </div>
+
+      <div class="sim3d-metrics">
+        <div class="sim3d-metric">
+          <div class="sim3d-metric-label">Active</div>
+          <div class="sim3d-metric-value" id="sim3dActive">420</div>
+        </div>
+        <div class="sim3d-metric">
+          <div class="sim3d-metric-label">Landed</div>
+          <div class="sim3d-metric-value" id="sim3dLanded">0</div>
+        </div>
+        <div class="sim3d-metric">
+          <div class="sim3d-metric-label">Efficiency</div>
+          <div class="sim3d-metric-value" id="sim3dEfficiency">0.0%</div>
+        </div>
+        <div class="sim3d-metric">
+          <div class="sim3d-metric-label">Mean Dist.</div>
+          <div class="sim3d-metric-value" id="sim3dMeanDist">--</div>
+        </div>
+        <div class="sim3d-metric">
+          <div class="sim3d-metric-label">Boundary</div>
+          <div class="sim3d-metric-value" id="sim3dBoundary">Robin</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sim3d-controls">
+      <div class="status-bar idle" id="sim3dStatusBar">
+        <div class="status-dot" id="sim3dStatusDot"></div>
+        <span id="sim3dStatusText">Ready - press play to launch 3D swarm</span>
+      </div>
+
+      <div class="ctrl-section">
+        <div class="ctrl-section-hdr" onclick="toggleSection(this)">
+          <span class="section-icon">▶</span> 3D Controls
+          <span class="chevron">▾</span>
+        </div>
+        <div class="ctrl-section-body">
+          <div class="sim3d-control-grid">
+            <button class="btn btn-primary" id="sim3dPlay">▶ Play</button>
+            <button class="btn btn-ghost" id="sim3dReset">↺ Reset</button>
+            <button class="btn btn-ghost" id="sim3dCamera">⟳ Auto Orbit</button>
+            <button class="btn btn-ghost" id="sim3dBurst">☀ Flare Burst</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="ctrl-section">
+        <div class="ctrl-section-hdr" onclick="toggleSection(this)">
+          <span class="section-icon">✦</span> Particle Dynamics
+          <span class="chevron">▾</span>
+        </div>
+        <div class="ctrl-section-body">
+          <div class="ctrl-row">
+            <div class="ctrl-row-hdr">
+              <span class="ctrl-name">Particles</span>
+              <span class="ctrl-val" id="sim3dParticlesVal">420</span>
+            </div>
+            <input type="range" id="sim3dParticles" min="80" max="800" step="20" value="420" data-sim3d="particles">
+          </div>
+          <div class="ctrl-row">
+            <div class="ctrl-row-hdr">
+              <span class="ctrl-name">Propulsion Speed</span>
+              <span class="ctrl-val" id="sim3dSpeedVal">4.2</span>
+            </div>
+            <input type="range" class="slider-orange" id="sim3dSpeed" min="1.0" max="8.0" step="0.1" value="4.2" data-sim3d="baseSpeed">
+          </div>
+          <div class="ctrl-row">
+            <div class="ctrl-row-hdr">
+              <span class="ctrl-name">Alignment Strength</span>
+              <span class="ctrl-val" id="sim3dAlignVal">0.70</span>
+            </div>
+            <input type="range" class="slider-green" id="sim3dAlign" min="0" max="2" step="0.05" value="0.70" data-sim3d="alignment">
+          </div>
+          <div class="ctrl-row">
+            <div class="ctrl-row-hdr">
+              <span class="ctrl-name">Angular Noise</span>
+              <span class="ctrl-val" id="sim3dNoiseVal">0.32</span>
+            </div>
+            <input type="range" class="slider-red" id="sim3dNoise" min="0" max="1.5" step="0.02" value="0.32" data-sim3d="noise">
+          </div>
+        </div>
+      </div>
+
+      <div class="ctrl-section">
+        <div class="ctrl-section-hdr" onclick="toggleSection(this)">
+          <span class="section-icon">☀</span> Solar Flares
+          <span class="chevron">▾</span>
+        </div>
+        <div class="ctrl-section-body">
+          <div class="ctrl-row">
+            <div class="ctrl-row-hdr">
+              <span class="ctrl-name">Flare Strength</span>
+              <span class="ctrl-val" id="sim3dFlareStrengthVal">0.65</span>
+            </div>
+            <input type="range" class="slider-orange" id="sim3dFlareStrength" min="0" max="1.5" step="0.05" value="0.65" data-sim3d="flareStrength">
+          </div>
+          <div class="ctrl-row">
+            <div class="ctrl-row-hdr">
+              <span class="ctrl-name">Flare Frequency</span>
+              <span class="ctrl-val" id="sim3dFlareFreqVal">0.35</span>
+            </div>
+            <input type="range" class="slider-red" id="sim3dFlareFreq" min="0.05" max="1.0" step="0.05" value="0.35" data-sim3d="flareFrequency">
+          </div>
+        </div>
+      </div>
+
+      <div class="ctrl-section">
+        <div class="ctrl-section-hdr" onclick="toggleSection(this)">
+          <span class="section-icon">◉</span> Boundary Conditions
+          <span class="chevron">▾</span>
+        </div>
+        <div class="ctrl-section-body">
+          <div class="ctrl-row">
+            <div class="ctrl-name" style="margin-bottom:5px">Planet Landing</div>
+            <select id="sim3dPlanetBoundary">
+              <option value="robin">Robin atmosphere (mixed)</option>
+              <option value="dirichlet">Dirichlet sink (perfect absorption)</option>
+            </select>
+          </div>
+          <div class="ctrl-row">
+            <div class="ctrl-name" style="margin-bottom:5px">Edges of Space</div>
+            <select id="sim3dSpaceBoundary">
+              <option value="neumann">Neumann reflective flux</option>
+              <option value="periodic">Periodic deep-space drift</option>
+            </select>
+          </div>
+          <div class="sim3d-robin-params" id="sim3dRobinParams">
+            <div class="ctrl-row">
+              <div class="ctrl-row-hdr">
+                <span class="ctrl-name">Atmosphere α</span>
+                <span class="ctrl-val" id="sim3dRobinAlphaVal">0.64</span>
+              </div>
+              <input type="range" class="slider-purple" id="sim3dRobinAlpha" min="0.05" max="1.5" step="0.01" value="0.64" data-sim3d="robinAlpha">
+            </div>
+            <div class="ctrl-row" style="margin-top:8px">
+              <div class="ctrl-row-hdr">
+                <span class="ctrl-name">Flux β</span>
+                <span class="ctrl-val" id="sim3dRobinBetaVal">0.55</span>
+              </div>
+              <input type="range" class="slider-green" id="sim3dRobinBeta" min="0.05" max="1.5" step="0.01" value="0.55" data-sim3d="robinBeta">
+            </div>
+          </div>
+          <p class="sim3d-inline-note">Star boundary is always a fixed Dirichlet source: landed or lost particles respawn from the solar corona.</p>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -2049,7 +2432,7 @@ window.addEventListener('load', () => {
   const ro = new ResizeObserver(() => { resizeCanvas(); if (!SIM.running) render(); });
   ro.observe(document.getElementById('canvasWrap'));
 });
-window.addEventListener('resize', () => { resizeCanvas(); if (!SIM.running) render(); });
+window.addEventListener('resize', () => { resizeCanvas(); if (!SIM.running && SIM.x && SIM.I_local) render(); });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PRESET LOADER
@@ -2351,6 +2734,720 @@ window.addEventListener('load', () => {
   gsInit();
   gsRender();
 });
+</script>
+<script type="module">
+const SIM3D_THREE_URL = "https://esm.sh/three@0.160.0";
+const SIM3D_CONTROLS_URL = "https://esm.sh/three@0.160.0/examples/jsm/controls/OrbitControls.js?deps=three@0.160.0";
+
+const sim3dMount = document.getElementById("sim3dMount");
+const sim3dLoading = document.getElementById("sim3dLoading");
+
+if (sim3dMount) {
+  bootSim3D().catch((err) => {
+    console.error("3D sim failed to initialise:", err);
+    if (sim3dLoading) {
+      sim3dLoading.classList.remove("hidden");
+      sim3dLoading.innerHTML = `
+        <div style="color:var(--acc3);font-weight:800">3D engine failed to load</div>
+        <p style="max-width:360px;text-align:center">Check the browser console and CDN access. The 2D simulator is unaffected.</p>
+      `;
+    }
+  });
+}
+
+async function bootSim3D() {
+  const THREE = await import(SIM3D_THREE_URL);
+  const { OrbitControls } = await import(SIM3D_CONTROLS_URL);
+
+  const config = {
+    maxParticles: 800,
+    particles: 420,
+    boxSize: 42,
+    baseSpeed: 4.2,
+    alignment: 0.70,
+    noise: 0.32,
+    flareStrength: 0.65,
+    flareFrequency: 0.35,
+    robinAlpha: 0.64,
+    robinBeta: 0.55,
+    planetBoundary: "robin",
+    spaceBoundary: "neumann",
+    autoOrbit: true,
+  };
+
+  const world = {
+    sun: { x: -15.5, y: 0, z: 0 },
+    planet: { x: 15.5, y: 0, z: 0 },
+    sunRadius: 2.35,
+    sourceRadius: 3.85,
+    planetRadius: 2.55,
+    atmosphereRadius: 4.05,
+    alignRadius: 3.4,
+    cellSize: 3.8,
+  };
+
+  const state = {
+    running: false,
+    elapsed: 0,
+    landed: 0,
+    arrivals: 0,
+    rejected: 0,
+    flareActive: false,
+    flareStart: 0,
+    flareDuration: 2.4,
+    flareIntensity: 0,
+    nextFlare: 4.5,
+    landingPulse: 0,
+    metricsTimer: 1,
+  };
+
+  const pos = new Float32Array(config.maxParticles * 3);
+  const dir = new Float32Array(config.maxParticles * 3);
+  const heat = new Float32Array(config.maxParticles);
+  const hash = new Map();
+  const flareWaves = [];
+
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x02050d, 0.025);
+
+  const camera = new THREE.PerspectiveCamera(48, 1, 0.1, 140);
+  camera.position.set(0, 12, 34);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  sim3dMount.appendChild(renderer.domElement);
+
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.06;
+  controls.autoRotate = config.autoOrbit;
+  controls.autoRotateSpeed = 0.55;
+  controls.minDistance = 16;
+  controls.maxDistance = 70;
+
+  scene.add(new THREE.AmbientLight(0x4f6b88, 0.55));
+
+  const sunLight = new THREE.PointLight(0xffa24c, 17.5, 130, 1.5);
+  sunLight.position.set(world.sun.x, world.sun.y, world.sun.z);
+  scene.add(sunLight);
+
+  const planetLight = new THREE.DirectionalLight(0x7fb6ff, 1.15);
+  planetLight.position.set(-4, 8, 10);
+  scene.add(planetLight);
+
+  const starTexture = makeRadialTexture(THREE, [
+    [0.0, "rgba(255,255,255,1)"],
+    [0.22, "rgba(255,195,88,0.95)"],
+    [0.48, "rgba(247,129,102,0.32)"],
+    [1.0, "rgba(247,129,102,0)"],
+  ]);
+
+  const sunCore = new THREE.Mesh(
+    new THREE.SphereGeometry(world.sunRadius, 48, 32),
+    new THREE.MeshBasicMaterial({ color: 0xfff1c4 })
+  );
+  sunCore.position.set(world.sun.x, world.sun.y, world.sun.z);
+  scene.add(sunCore);
+
+  const corona = new THREE.Sprite(
+    new THREE.SpriteMaterial({
+      map: starTexture,
+      color: 0xffa657,
+      transparent: true,
+      opacity: 1.0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    })
+  );
+  corona.position.copy(sunCore.position);
+  corona.scale.set(10.5, 10.5, 1);
+  scene.add(corona);
+
+  const sourceShell = new THREE.Mesh(
+    new THREE.SphereGeometry(world.sourceRadius, 32, 16),
+    new THREE.MeshBasicMaterial({
+      color: 0xffa657,
+      transparent: true,
+      opacity: 0.12,
+      wireframe: true,
+      blending: THREE.AdditiveBlending,
+    })
+  );
+  sourceShell.position.copy(sunCore.position);
+  scene.add(sourceShell);
+
+  const planet = new THREE.Mesh(
+    new THREE.SphereGeometry(world.planetRadius, 72, 48),
+    new THREE.MeshStandardMaterial({
+      color: 0x6ec5ff,
+      roughness: 0.46,
+      metalness: 0.06,
+      emissive: 0x3ca7ff,
+      emissiveIntensity: 2.4,
+    })
+  );
+  planet.position.set(world.planet.x, world.planet.y, world.planet.z);
+  scene.add(planet);
+
+  const continentLayer = new THREE.Mesh(
+    new THREE.SphereGeometry(world.planetRadius * 1.012, 36, 24),
+    new THREE.MeshBasicMaterial({
+      color: 0x2bd6a3,
+      transparent: true,
+      opacity: 0.28,
+      wireframe: true,
+    })
+  );
+  continentLayer.position.copy(planet.position);
+  scene.add(continentLayer);
+
+  const atmosphere = new THREE.Mesh(
+    new THREE.SphereGeometry(world.atmosphereRadius, 64, 32),
+    new THREE.MeshBasicMaterial({
+      color: 0xa8d8ff,
+      transparent: true,
+      opacity: 0.34,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    })
+  );
+  atmosphere.position.copy(planet.position);
+  scene.add(atmosphere);
+
+  const landingRing = new THREE.Mesh(
+    new THREE.TorusGeometry(world.planetRadius * 1.18, 0.035, 12, 96),
+    new THREE.MeshBasicMaterial({
+      color: 0x7dff94,
+      transparent: true,
+      opacity: 0.70,
+      blending: THREE.AdditiveBlending,
+    })
+  );
+  landingRing.position.copy(planet.position);
+  landingRing.rotation.x = Math.PI / 2.8;
+  landingRing.rotation.y = -0.35;
+  scene.add(landingRing);
+
+  const planetGlowLight = new THREE.PointLight(0x78c8ff, 2.5, 24, 1.8);
+  planetGlowLight.position.copy(planet.position);
+  scene.add(planetGlowLight);
+
+  const beamLength = world.planet.x - world.sun.x;
+  const radiationBeam = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.32, 0.12, beamLength, 32, 1, true),
+    new THREE.MeshBasicMaterial({
+      color: 0xffa657,
+      transparent: true,
+      opacity: 0.10,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    })
+  );
+  radiationBeam.position.set((world.sun.x + world.planet.x) / 2, 0, 0);
+  radiationBeam.rotation.z = Math.PI / 2;
+  scene.add(radiationBeam);
+
+  const cage = new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(config.boxSize, config.boxSize, config.boxSize)),
+    new THREE.LineBasicMaterial({ color: 0x58a6ff, transparent: true, opacity: 0.13 })
+  );
+  scene.add(cage);
+
+  const stars = makeStarfield(THREE, 900, config.boxSize * 1.7);
+  scene.add(stars);
+
+  const particlePositions = new Float32Array(config.maxParticles * 3);
+  const particleGeometry = new THREE.BufferGeometry();
+  particleGeometry.setAttribute("position", new THREE.BufferAttribute(particlePositions, 3));
+  particleGeometry.setDrawRange(0, config.particles);
+  const particleMaterial = new THREE.PointsMaterial({
+    color: 0xff3232,
+    size: 0.24,
+    sizeAttenuation: true,
+    transparent: true,
+    opacity: 0.98,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    toneMapped: false,
+  });
+  const particles = new THREE.Points(particleGeometry, particleMaterial);
+  scene.add(particles);
+
+  const dom = {
+    play: document.getElementById("sim3dPlay"),
+    reset: document.getElementById("sim3dReset"),
+    camera: document.getElementById("sim3dCamera"),
+    burst: document.getElementById("sim3dBurst"),
+    statusBar: document.getElementById("sim3dStatusBar"),
+    statusDot: document.getElementById("sim3dStatusDot"),
+    statusText: document.getElementById("sim3dStatusText"),
+    planetBoundary: document.getElementById("sim3dPlanetBoundary"),
+    spaceBoundary: document.getElementById("sim3dSpaceBoundary"),
+    robinParams: document.getElementById("sim3dRobinParams"),
+    active: document.getElementById("sim3dActive"),
+    landed: document.getElementById("sim3dLanded"),
+    efficiency: document.getElementById("sim3dEfficiency"),
+    meanDist: document.getElementById("sim3dMeanDist"),
+    boundary: document.getElementById("sim3dBoundary"),
+    planetBadge: document.getElementById("sim3dPlanetBadge"),
+    spaceBadge: document.getElementById("sim3dSpaceBadge"),
+    flareText: document.getElementById("sim3dFlareText"),
+    flareFill: document.getElementById("sim3dFlareFill"),
+  };
+
+  bindControls();
+  resetSimulation();
+  resize();
+  if (sim3dLoading) sim3dLoading.classList.add("hidden");
+
+  const resizeObserver = new ResizeObserver(resize);
+  resizeObserver.observe(sim3dMount);
+
+  const clock = new THREE.Clock();
+  renderer.setAnimationLoop(() => {
+    const dt = Math.min(0.033, clock.getDelta());
+    state.elapsed += dt;
+    updateFlares(dt);
+    if (state.running) {
+      simulate(dt);
+    }
+    updateVisuals(dt);
+    controls.update();
+    renderer.render(scene, camera);
+  });
+
+  window.SIM3D = { config, state, reset: resetSimulation, triggerFlare };
+
+  function bindControls() {
+    dom.play?.addEventListener("click", () => {
+      state.running = !state.running;
+      dom.play.textContent = state.running ? "⏸ Pause" : "▶ Play";
+      setStatus(state.running ? "running" : "idle", state.running ? "3D swarm in flight" : "Paused - 3D state preserved");
+    });
+
+    dom.reset?.addEventListener("click", resetSimulation);
+
+    dom.camera?.addEventListener("click", () => {
+      config.autoOrbit = !config.autoOrbit;
+      controls.autoRotate = config.autoOrbit;
+      dom.camera.textContent = config.autoOrbit ? "⟳ Auto Orbit" : "◌ Manual Cam";
+    });
+
+    dom.burst?.addEventListener("click", () => triggerFlare(true));
+
+    dom.planetBoundary?.addEventListener("change", (event) => {
+      config.planetBoundary = event.target.value;
+      updateBoundaryUi();
+    });
+
+    dom.spaceBoundary?.addEventListener("change", (event) => {
+      config.spaceBoundary = event.target.value;
+      updateBoundaryUi();
+    });
+
+    document.querySelectorAll("[data-sim3d]").forEach((input) => {
+      const key = input.dataset.sim3d;
+      const label = document.getElementById(`${input.id}Val`);
+      const applyValue = () => {
+        const raw = input.valueAsNumber;
+        if (key === "particles") {
+          config.particles = Math.max(1, Math.min(config.maxParticles, Math.round(raw)));
+          particleGeometry.setDrawRange(0, config.particles);
+          label.textContent = String(config.particles);
+          resetSimulation();
+          return;
+        }
+        config[key] = raw;
+        if (label) label.textContent = key === "baseSpeed" ? raw.toFixed(1) : raw.toFixed(2);
+        if (key === "flareFrequency") {
+          state.nextFlare = Math.min(state.nextFlare, state.elapsed + flareInterval());
+        }
+      };
+      input.addEventListener("input", applyValue);
+      applyValue();
+    });
+  }
+
+  function setStatus(type, message) {
+    if (!dom.statusBar || !dom.statusDot || !dom.statusText) return;
+    dom.statusBar.className = `status-bar ${type}`;
+    dom.statusDot.className = `status-dot${type === "running" ? " spin" : ""}`;
+    dom.statusText.textContent = message;
+  }
+
+  function resetSimulation() {
+    state.elapsed = 0;
+    state.landed = 0;
+    state.arrivals = 0;
+    state.rejected = 0;
+    state.flareActive = false;
+    state.flareIntensity = 0;
+    state.nextFlare = 4.5;
+    state.landingPulse = 0;
+    for (let i = 0; i < config.particles; i++) {
+      respawnParticle(i, 0.25);
+    }
+    updateBoundaryUi();
+    updateParticleInstances();
+    updateMetrics();
+    setStatus(state.running ? "running" : "idle", state.running ? "3D swarm reset and running" : "Ready - press play to launch 3D swarm");
+  }
+
+  function respawnParticle(i, heatValue = 0.15) {
+    const o = i * 3;
+    const unit = randomUnit();
+    const r = world.sunRadius + Math.random() * (world.sourceRadius - world.sunRadius);
+    pos[o] = world.sun.x + unit.x * r;
+    pos[o + 1] = world.sun.y + unit.y * r;
+    pos[o + 2] = world.sun.z + unit.z * r;
+
+    const toward = normalize3(
+      world.planet.x - pos[o] + randn() * 1.4,
+      world.planet.y - pos[o + 1] + randn() * 1.4,
+      world.planet.z - pos[o + 2] + randn() * 1.4
+    );
+    dir[o] = toward.x;
+    dir[o + 1] = toward.y;
+    dir[o + 2] = toward.z;
+    heat[i] = heatValue;
+  }
+
+  function simulate(dt) {
+    buildSpatialHash();
+    const half = config.boxSize / 2;
+    const alignR2 = world.alignRadius * world.alignRadius;
+
+    for (let i = 0; i < config.particles; i++) {
+      const o = i * 3;
+      let px = pos[o], py = pos[o + 1], pz = pos[o + 2];
+      let dx = dir[o], dy = dir[o + 1], dz = dir[o + 2];
+
+      const toPlanet = normalize3(world.planet.x - px, world.planet.y - py, world.planet.z - pz);
+      const fromSun = normalize3(px - world.sun.x, py - world.sun.y, pz - world.sun.z);
+      const sunDist2 = distanceSquared(px, py, pz, world.sun.x, world.sun.y, world.sun.z);
+      const radiation = clamp(28 / (sunDist2 + 14), 0.10, 1.85) * (1 + state.flareIntensity * config.flareStrength * 1.25);
+
+      let ax = 0, ay = 0, az = 0, count = 0;
+      const cx = Math.floor((px + half) / world.cellSize);
+      const cy = Math.floor((py + half) / world.cellSize);
+      const cz = Math.floor((pz + half) / world.cellSize);
+      for (let ix = cx - 1; ix <= cx + 1; ix++) {
+        for (let iy = cy - 1; iy <= cy + 1; iy++) {
+          for (let iz = cz - 1; iz <= cz + 1; iz++) {
+            const bucket = hash.get(`${ix},${iy},${iz}`);
+            if (!bucket) continue;
+            for (let b = 0; b < bucket.length; b++) {
+              const j = bucket[b];
+              if (j === i) continue;
+              const jo = j * 3;
+              const d2 = distanceSquared(px, py, pz, pos[jo], pos[jo + 1], pos[jo + 2]);
+              if (d2 < alignR2) {
+                ax += dir[jo];
+                ay += dir[jo + 1];
+                az += dir[jo + 2];
+                count++;
+              }
+            }
+          }
+        }
+      }
+      const align = count ? normalize3(ax, ay, az) : { x: dx, y: dy, z: dz };
+      const rand = randomUnit();
+      const noiseAmp = config.noise * (0.16 + state.flareIntensity * config.flareStrength * 0.38) * Math.sqrt(dt);
+      const desired = normalize3(
+        toPlanet.x * 1.35 + align.x * config.alignment + fromSun.x * state.flareIntensity * config.flareStrength * 0.55 + rand.x * noiseAmp,
+        toPlanet.y * 1.35 + align.y * config.alignment + fromSun.y * state.flareIntensity * config.flareStrength * 0.55 + rand.y * noiseAmp,
+        toPlanet.z * 1.35 + align.z * config.alignment + fromSun.z * state.flareIntensity * config.flareStrength * 0.55 + rand.z * noiseAmp
+      );
+
+      const steer = clamp((1.25 + config.alignment * 0.38) * dt, 0.02, 0.24);
+      const nextDir = normalize3(
+        dx * (1 - steer) + desired.x * steer,
+        dy * (1 - steer) + desired.y * steer,
+        dz * (1 - steer) + desired.z * steer
+      );
+      dx = nextDir.x; dy = nextDir.y; dz = nextDir.z;
+
+      const speed = config.baseSpeed * (0.48 + 0.42 * radiation + 0.22 * state.flareIntensity * config.flareStrength);
+      px += dx * speed * dt;
+      py += dy * speed * dt;
+      pz += dz * speed * dt;
+
+      const planetDist = Math.sqrt(distanceSquared(px, py, pz, world.planet.x, world.planet.y, world.planet.z));
+      if (config.planetBoundary === "dirichlet" && planetDist <= world.planetRadius) {
+        state.arrivals++;
+        state.landed++;
+        state.landingPulse = Math.min(1, state.landingPulse + 0.10);
+        respawnParticle(i, 0.55);
+        continue;
+      }
+
+      if (config.planetBoundary === "robin" && planetDist <= world.atmosphereRadius) {
+        const normal = normalize3(px - world.planet.x, py - world.planet.y, pz - world.planet.z);
+        const inwardFlux = clamp(-(dx * normal.x + dy * normal.y + dz * normal.z), 0, 1);
+        const flarePenalty = state.flareIntensity * config.flareStrength * 0.42;
+        const landingChance = clamp(0.06 + config.robinAlpha * 0.30 + config.robinBeta * inwardFlux * 0.50 - flarePenalty, 0.03, 0.94);
+        state.arrivals++;
+        if (Math.random() < landingChance) {
+          state.landed++;
+          state.landingPulse = Math.min(1, state.landingPulse + 0.07);
+          respawnParticle(i, 0.55);
+          continue;
+        }
+        state.rejected++;
+        const scatter = randomUnit();
+        px = world.planet.x + normal.x * world.atmosphereRadius * 1.04;
+        py = world.planet.y + normal.y * world.atmosphereRadius * 1.04;
+        pz = world.planet.z + normal.z * world.atmosphereRadius * 1.04;
+        const bounce = normalize3(normal.x * 0.85 + scatter.x * 0.55, normal.y * 0.85 + scatter.y * 0.55, normal.z * 0.85 + scatter.z * 0.55);
+        dx = bounce.x; dy = bounce.y; dz = bounce.z;
+        heat[i] = 1;
+      }
+
+      if (config.spaceBoundary === "periodic") {
+        if (px < -half) px += config.boxSize;
+        if (px > half) px -= config.boxSize;
+        if (py < -half) py += config.boxSize;
+        if (py > half) py -= config.boxSize;
+        if (pz < -half) pz += config.boxSize;
+        if (pz > half) pz -= config.boxSize;
+      } else {
+        if (px < -half) { px = -half; dx = Math.abs(dx); }
+        if (px > half) { px = half; dx = -Math.abs(dx); }
+        if (py < -half) { py = -half; dy = Math.abs(dy); }
+        if (py > half) { py = half; dy = -Math.abs(dy); }
+        if (pz < -half) { pz = -half; dz = Math.abs(dz); }
+        if (pz > half) { pz = half; dz = -Math.abs(dz); }
+      }
+
+      pos[o] = px; pos[o + 1] = py; pos[o + 2] = pz;
+      dir[o] = dx; dir[o + 1] = dy; dir[o + 2] = dz;
+      heat[i] = clamp(heat[i] * 0.966 + radiation * 0.018 + state.flareIntensity * 0.028, 0, 1.6);
+    }
+  }
+
+  function buildSpatialHash() {
+    hash.clear();
+    const half = config.boxSize / 2;
+    for (let i = 0; i < config.particles; i++) {
+      const o = i * 3;
+      const ix = Math.floor((pos[o] + half) / world.cellSize);
+      const iy = Math.floor((pos[o + 1] + half) / world.cellSize);
+      const iz = Math.floor((pos[o + 2] + half) / world.cellSize);
+      const key = `${ix},${iy},${iz}`;
+      let bucket = hash.get(key);
+      if (!bucket) {
+        bucket = [];
+        hash.set(key, bucket);
+      }
+      bucket.push(i);
+    }
+  }
+
+  function updateFlares(dt) {
+    if (!state.flareActive && state.elapsed >= state.nextFlare) {
+      triggerFlare(false);
+    }
+
+    if (state.flareActive) {
+      const t = (state.elapsed - state.flareStart) / state.flareDuration;
+      if (t >= 1) {
+        state.flareActive = false;
+        state.flareIntensity = 0;
+        state.nextFlare = state.elapsed + flareInterval();
+      } else {
+        state.flareIntensity = Math.sin(Math.PI * t);
+      }
+    }
+
+    for (let i = flareWaves.length - 1; i >= 0; i--) {
+      const wave = flareWaves[i];
+      wave.age += dt;
+      const t = wave.age / wave.life;
+      wave.mesh.scale.setScalar(world.sunRadius + t * 18);
+      wave.mesh.material.opacity = Math.max(0, (1 - t) * 0.36 * config.flareStrength);
+      if (t >= 1) {
+        scene.remove(wave.mesh);
+        wave.mesh.geometry.dispose();
+        wave.mesh.material.dispose();
+        flareWaves.splice(i, 1);
+      }
+    }
+  }
+
+  function triggerFlare(manual) {
+    state.flareActive = true;
+    state.flareStart = state.elapsed;
+    state.flareDuration = 1.7 + config.flareStrength * 1.45;
+    state.flareIntensity = 0.01;
+    if (manual) state.nextFlare = state.elapsed + state.flareDuration + flareInterval();
+    createFlareWave();
+    updateMetrics();
+    if (manual) setStatus(state.running ? "running" : "idle", "Manual solar flare boundary pulse injected");
+  }
+
+  function flareInterval() {
+    return 4.5 + (1 - config.flareFrequency) * 18;
+  }
+
+  function createFlareWave() {
+    const mesh = new THREE.Mesh(
+      new THREE.SphereGeometry(1, 32, 18),
+      new THREE.MeshBasicMaterial({
+        color: 0xff6f3c,
+        transparent: true,
+        opacity: 0.36 * config.flareStrength,
+        wireframe: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      })
+    );
+    mesh.position.set(world.sun.x, world.sun.y, world.sun.z);
+    scene.add(mesh);
+    flareWaves.push({ mesh, age: 0, life: 2.6 + config.flareStrength * 0.8 });
+  }
+
+  function updateVisuals(dt) {
+    updateParticleInstances();
+    planet.rotation.y += dt * 0.15;
+    continentLayer.rotation.y -= dt * 0.09;
+    sourceShell.rotation.y += dt * 0.32;
+    sourceShell.rotation.x += dt * 0.12;
+    sunCore.scale.setScalar(1 + state.flareIntensity * config.flareStrength * 0.075);
+    corona.scale.setScalar(13.4 + state.flareIntensity * config.flareStrength * 3.4);
+    corona.material.opacity = 1.0 - state.flareIntensity * 0.06;
+    sunLight.intensity = 17.5 + state.flareIntensity * config.flareStrength * 9.5;
+    radiationBeam.material.opacity = 0.10 + state.flareIntensity * config.flareStrength * 0.14;
+    state.landingPulse *= 0.92;
+    atmosphere.material.opacity = 0.13 + state.landingPulse * 0.16 + state.flareIntensity * 0.035;
+    landingRing.material.opacity = 0.34 + state.landingPulse * 0.45;
+    landingRing.rotation.z += dt * (0.18 + state.landingPulse * 0.8);
+
+    state.metricsTimer += dt;
+    if (state.metricsTimer > 0.16) {
+      state.metricsTimer = 0;
+      updateMetrics();
+    }
+  }
+
+  function updateParticleInstances() {
+    for (let i = 0; i < config.particles; i++) {
+      const o = i * 3;
+      particlePositions[o] = pos[o];
+      particlePositions[o + 1] = pos[o + 1];
+      particlePositions[o + 2] = pos[o + 2];
+    }
+    particleGeometry.setDrawRange(0, config.particles);
+    particleGeometry.attributes.position.needsUpdate = true;
+    particleMaterial.size = 0.24 + state.flareIntensity * config.flareStrength * 0.1;
+  }
+
+  function updateMetrics() {
+    let distSum = 0;
+    for (let i = 0; i < config.particles; i++) {
+      const o = i * 3;
+      distSum += Math.sqrt(distanceSquared(pos[o], pos[o + 1], pos[o + 2], world.planet.x, world.planet.y, world.planet.z));
+    }
+    const efficiency = state.arrivals ? (state.landed / state.arrivals) * 100 : 0;
+    if (dom.active) dom.active.textContent = String(config.particles);
+    if (dom.landed) dom.landed.textContent = String(state.landed);
+    if (dom.efficiency) dom.efficiency.textContent = `${efficiency.toFixed(1)}%`;
+    if (dom.meanDist) dom.meanDist.textContent = `${(distSum / Math.max(1, config.particles)).toFixed(1)} L`;
+    if (dom.boundary) dom.boundary.textContent = config.planetBoundary === "robin" ? "Robin" : "Sink";
+    const flarePct = Math.round(state.flareIntensity * 100);
+    if (dom.flareText) dom.flareText.textContent = `${flarePct}%`;
+    if (dom.flareFill) dom.flareFill.style.width = `${flarePct}%`;
+  }
+
+  function updateBoundaryUi() {
+    const robin = config.planetBoundary === "robin";
+    if (dom.robinParams) dom.robinParams.classList.toggle("hidden", !robin);
+    if (dom.planetBadge) {
+      dom.planetBadge.textContent = robin ? "Planet: Robin atmosphere" : "Planet: Dirichlet sink";
+      dom.planetBadge.className = `sim3d-badge ${robin ? "cool" : "green"}`;
+    }
+    if (dom.spaceBadge) {
+      const periodic = config.spaceBoundary === "periodic";
+      dom.spaceBadge.textContent = periodic ? "Space: Periodic drift" : "Space: Neumann reflective";
+      dom.spaceBadge.className = `sim3d-badge ${periodic ? "cool" : "green"}`;
+    }
+    updateMetrics();
+  }
+
+  function resize() {
+    const rect = sim3dMount.getBoundingClientRect();
+    const width = Math.max(1, rect.width);
+    const height = Math.max(1, rect.height);
+    renderer.setSize(width, height, false);
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+  }
+
+  function makeStarfield(THREE_NS, count, radius) {
+    const positions = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++) {
+      const u = randomUnit();
+      const r = radius * (0.55 + Math.random() * 0.45);
+      positions[i * 3] = u.x * r;
+      positions[i * 3 + 1] = u.y * r;
+      positions[i * 3 + 2] = u.z * r;
+    }
+    const geometry = new THREE_NS.BufferGeometry();
+    geometry.setAttribute("position", new THREE_NS.BufferAttribute(positions, 3));
+    const material = new THREE_NS.PointsMaterial({
+      color: 0xbfd7ff,
+      size: 0.055,
+      transparent: true,
+      opacity: 0.72,
+      sizeAttenuation: true,
+    });
+    return new THREE_NS.Points(geometry, material);
+  }
+
+  function makeRadialTexture(THREE_NS, stops) {
+    const canvas = document.createElement("canvas");
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext("2d");
+    const gradient = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+    stops.forEach(([pos, value]) => gradient.addColorStop(pos, value));
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 256, 256);
+    const texture = new THREE_NS.CanvasTexture(canvas);
+    texture.colorSpace = THREE_NS.SRGBColorSpace;
+    return texture;
+  }
+
+  function distanceSquared(ax, ay, az, bx, by, bz) {
+    const x = ax - bx;
+    const y = ay - by;
+    const z = az - bz;
+    return x * x + y * y + z * z;
+  }
+
+  function normalize3(x, y, z) {
+    const inv = 1 / (Math.hypot(x, y, z) || 1);
+    return { x: x * inv, y: y * inv, z: z * inv };
+  }
+
+  function randomUnit() {
+    const z = Math.random() * 2 - 1;
+    const a = Math.random() * Math.PI * 2;
+    const r = Math.sqrt(Math.max(0, 1 - z * z));
+    return { x: Math.cos(a) * r, y: Math.sin(a) * r, z };
+  }
+
+  function randn() {
+    const u = Math.random() + 1e-12;
+    const v = Math.random();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  }
+
+  function clamp(v, lo, hi) {
+    return Math.max(lo, Math.min(hi, v));
+  }
+}
 </script>
 </body>
 </html>
