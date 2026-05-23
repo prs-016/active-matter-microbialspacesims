@@ -1,0 +1,2082 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PJPS · Light-Driven Janus Particle Swarm Simulator</title>
+<style>
+/* ══════════════════════════════════════════════════
+   DESIGN SYSTEM
+══════════════════════════════════════════════════ */
+:root {
+  --bg:      #0d1117;
+  --bg2:     #161b22;
+  --bg3:     #21262d;
+  --bg4:     #30363d;
+  --acc1:    #58a6ff;
+  --acc2:    #3fb950;
+  --acc3:    #f78166;
+  --acc4:    #d2a8ff;
+  --acc5:    #ffa657;
+  --fg:      #e6edf3;
+  --fg2:     #8b949e;
+  --fg3:     #484f58;
+  --border:  #30363d;
+  --glow1:   rgba(88,166,255,0.15);
+  --glow2:   rgba(63,185,80,0.15);
+  --radius:  8px;
+  --radius-lg: 14px;
+  --font-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* ── Scrollbar ──────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg2); }
+::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 3px; }
+
+/* ── Typography ─────────────────────────────────── */
+h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.03em; }
+h2 { font-size: 1.3rem; font-weight: 600; color: var(--fg); margin-bottom: 12px; }
+h3 { font-size: 1rem; font-weight: 600; color: var(--fg2); text-transform: uppercase; letter-spacing: 0.08em; }
+p  { color: var(--fg2); }
+code { font-family: var(--font-mono); font-size: 0.85em; background: var(--bg3); padding: 2px 5px; border-radius: 4px; color: var(--acc4); }
+
+/* ── Header ─────────────────────────────────────── */
+.site-header {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(13,17,23,0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  height: 56px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.header-brand { display: flex; align-items: center; gap: 10px; }
+.brand-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--acc2);
+  box-shadow: 0 0 10px var(--acc2);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%,100%{ opacity:1; transform:scale(1); }
+  50%{ opacity:0.6; transform:scale(1.3); }
+}
+.brand-name { font-weight: 700; font-size: 1rem; color: var(--fg); }
+.brand-sub  { font-size: 0.75rem; color: var(--fg2); }
+.header-links { display:flex; gap:16px; }
+.header-links a {
+  color: var(--fg2); text-decoration: none; font-size: 0.8rem;
+  padding: 4px 8px; border-radius: 4px; transition: color 0.15s, background 0.15s;
+}
+.header-links a:hover { color: var(--fg); background: var(--bg3); }
+
+/* ── Hero ───────────────────────────────────────── */
+.hero {
+  padding: 52px 32px 40px;
+  background: linear-gradient(180deg, var(--bg2) 0%, var(--bg) 100%);
+  border-bottom: 1px solid var(--border);
+}
+.hero-inner { max-width: 900px; margin: 0 auto; }
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--bg3); border: 1px solid var(--border);
+  padding: 4px 10px; border-radius: 20px;
+  font-size: 0.72rem; color: var(--acc1); font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  margin-bottom: 16px;
+}
+.hero h1 { margin-bottom: 12px; }
+.hero h1 .hl { color: var(--acc1); }
+.hero p   { max-width: 640px; font-size: 0.95rem; margin-bottom: 24px; }
+.hero-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--bg3); border: 1px solid var(--border);
+  padding: 5px 12px; border-radius: 20px;
+  font-size: 0.78rem; font-weight: 500;
+}
+.pill-dot { width: 6px; height: 6px; border-radius: 50%; }
+
+/* ── Layout ─────────────────────────────────────── */
+.main-grid {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 0;
+  height: calc(100vh - 56px - 1px);
+  max-height: 820px;
+}
+.sim-panel {
+  display: flex; flex-direction: column;
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+}
+.ctrl-panel {
+  background: var(--bg2);
+  overflow-y: auto;
+  padding: 16px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+
+/* ── Canvas header ──────────────────────────────── */
+.canvas-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg2);
+  flex-shrink: 0;
+}
+.canvas-title { font-weight: 600; font-size: 0.85rem; }
+.canvas-controls { display:flex; gap:8px; }
+.btn {
+  padding: 5px 14px; border-radius: var(--radius);
+  font-size: 0.78rem; font-weight: 600;
+  border: 1px solid; cursor: pointer;
+  transition: all 0.15s; outline: none;
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.btn-primary {
+  background: var(--acc1); color: #000; border-color: var(--acc1);
+}
+.btn-primary:hover { background: #79bbff; }
+.btn-success {
+  background: transparent; color: var(--acc2); border-color: var(--acc2);
+}
+.btn-success:hover { background: var(--glow2); }
+.btn-danger {
+  background: transparent; color: var(--acc3); border-color: var(--acc3);
+}
+.btn-danger:hover { background: rgba(247,129,102,0.12); }
+.btn-ghost {
+  background: transparent; color: var(--fg2); border-color: var(--border);
+}
+.btn-ghost:hover { background: var(--bg3); color: var(--fg); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ── Simulation canvas wrapper ──────────────────── */
+.canvas-wrap {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: #000;
+}
+#simCanvas {
+  display: block;
+  width: 100%; height: 100%;
+  cursor: crosshair;
+}
+
+/* ── Metrics strip ──────────────────────────────── */
+.metrics-strip {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.metric-cell {
+  padding: 10px 14px;
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 2px;
+}
+.metric-cell:last-child { border-right: none; }
+.metric-label { font-size: 0.68rem; color: var(--fg3); text-transform: uppercase; letter-spacing: 0.07em; }
+.metric-val { font-size: 1.35rem; font-weight: 700; font-family: var(--font-mono); }
+.metric-sub { font-size: 0.7rem; color: var(--fg2); }
+
+/* ── Mini sparklines ────────────────────────────── */
+.sparklines {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.spark-cell {
+  padding: 6px 10px;
+  border-right: 1px solid var(--border);
+}
+.spark-cell:last-child { border-right: none; }
+.spark-label { font-size: 0.65rem; color: var(--fg3); margin-bottom: 3px; }
+.spark-canvas { width: 100%; height: 40px; display: block; }
+
+/* ── Control sections ───────────────────────────── */
+.ctrl-section {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.ctrl-section-hdr {
+  padding: 8px 12px;
+  background: var(--bg4);
+  font-size: 0.7rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--fg2);
+  display: flex; align-items: center; gap: 6px;
+  cursor: pointer; user-select: none;
+}
+.ctrl-section-hdr .section-icon { font-size: 0.85rem; }
+.ctrl-section-hdr .chevron { margin-left: auto; transition: transform 0.2s; }
+.ctrl-section-hdr.collapsed .chevron { transform: rotate(-90deg); }
+.ctrl-section-body { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.ctrl-section-body.hidden { display: none; }
+
+/* ── Sliders ────────────────────────────────────── */
+.ctrl-row {
+  display: flex; flex-direction: column; gap: 3px;
+}
+.ctrl-row-hdr {
+  display: flex; justify-content: space-between; align-items: baseline;
+}
+.ctrl-name { font-size: 0.78rem; font-weight: 500; color: var(--fg2); }
+.ctrl-eq   { font-size: 0.68rem; color: var(--fg3); font-family: var(--font-mono); }
+.ctrl-val  { font-size: 0.82rem; font-weight: 700; font-family: var(--font-mono); color: var(--acc1); min-width: 38px; text-align: right; }
+
+input[type=range] {
+  -webkit-appearance: none;
+  width: 100%; height: 4px;
+  background: var(--bg4);
+  border-radius: 2px; outline: none; cursor: pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  border-radius: 50%; background: var(--acc1);
+  cursor: pointer; transition: transform 0.1s;
+  box-shadow: 0 0 6px rgba(88,166,255,0.5);
+}
+input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.3); }
+input[type=range]:focus::-webkit-slider-thumb { box-shadow: 0 0 0 3px rgba(88,166,255,0.3); }
+
+/* Colored slider variants */
+.slider-green::-webkit-slider-thumb  { background: var(--acc2); box-shadow: 0 0 6px rgba(63,185,80,0.5); }
+.slider-red::-webkit-slider-thumb    { background: var(--acc3); box-shadow: 0 0 6px rgba(247,129,102,0.5); }
+.slider-purple::-webkit-slider-thumb { background: var(--acc4); box-shadow: 0 0 6px rgba(210,168,255,0.5); }
+.slider-orange::-webkit-slider-thumb { background: var(--acc5); box-shadow: 0 0 6px rgba(255,166,87,0.5); }
+
+/* ── Select ─────────────────────────────────────── */
+select {
+  background: var(--bg4); color: var(--fg);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 6px 10px; font-size: 0.8rem; width: 100%;
+  cursor: pointer; outline: none;
+}
+select:focus { border-color: var(--acc1); }
+
+/* ── Checkbox toggle ────────────────────────────── */
+.toggle-row {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.toggle-label { font-size: 0.78rem; color: var(--fg2); }
+.toggle {
+  position: relative; width: 36px; height: 20px;
+}
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+  position: absolute; inset: 0; cursor: pointer;
+  background: var(--bg4); border-radius: 20px; transition: 0.2s;
+}
+.toggle-slider::before {
+  content: ''; position: absolute;
+  width: 14px; height: 14px;
+  left: 3px; bottom: 3px;
+  background: var(--fg2); border-radius: 50%; transition: 0.2s;
+}
+.toggle input:checked + .toggle-slider { background: var(--acc1); }
+.toggle input:checked + .toggle-slider::before { transform: translateX(16px); background: #fff; }
+
+/* ── Status indicator ───────────────────────────── */
+.status-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; border-radius: var(--radius);
+  font-size: 0.78rem; font-weight: 500;
+}
+.status-bar.running { background: rgba(88,166,255,0.1); color: var(--acc1); border: 1px solid rgba(88,166,255,0.3); }
+.status-bar.idle    { background: rgba(63,185,80,0.1);  color: var(--acc2); border: 1px solid rgba(63,185,80,0.3); }
+.status-bar.error   { background: rgba(247,129,102,0.1);color: var(--acc3); border: 1px solid rgba(247,129,102,0.3); }
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.status-dot.spin { animation: spin-pulse 1s infinite; }
+@keyframes spin-pulse {
+  0%,100% { opacity:1; } 50% { opacity:0.3; }
+}
+
+/* ── Run Python sim button ──────────────────────── */
+.run-py-btn {
+  width: 100%;
+  padding: 10px;
+  background: linear-gradient(135deg, #1a2d3b 0%, #0d2027 100%);
+  border: 1px solid var(--acc1);
+  border-radius: var(--radius);
+  color: var(--acc1);
+  font-weight: 700; font-size: 0.85rem;
+  cursor: pointer; transition: all 0.2s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.run-py-btn:hover { background: var(--glow1); box-shadow: 0 0 16px rgba(88,166,255,0.2); }
+.run-py-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Plots section ──────────────────────────────── */
+.plots-section {
+  padding: 32px 24px;
+  border-top: 1px solid var(--border);
+}
+.plots-section-title {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 20px;
+}
+.section-line { flex: 1; height: 1px; background: var(--border); }
+.plots-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: 16px;
+}
+.plot-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.plot-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+.plot-card-hdr {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.plot-card-title { font-size: 0.82rem; font-weight: 600; }
+.plot-card-badge {
+  font-size: 0.65rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  padding: 2px 8px; border-radius: 10px;
+}
+.badge-demo   { background: rgba(88,166,255,0.15);  color: var(--acc1); }
+.badge-task1  { background: rgba(210,168,255,0.15); color: var(--acc4); }
+.badge-task2  { background: rgba(63,185,80,0.15);   color: var(--acc2); }
+.badge-extra  { background: rgba(255,166,87,0.15);  color: var(--acc5); }
+.plot-img { width: 100%; display: block; }
+.plot-card-footer {
+  padding: 8px 14px;
+  font-size: 0.72rem; color: var(--fg3);
+  border-top: 1px solid var(--border);
+}
+
+/* ── Physics reference section ──────────────────── */
+.physics-section {
+  padding: 32px 24px;
+  border-top: 1px solid var(--border);
+  background: var(--bg2);
+}
+.eq-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 12px; margin-top: 16px;
+}
+.eq-card {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+}
+.eq-title { font-size: 0.72rem; color: var(--acc1); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+.eq-body  { font-family: var(--font-mono); font-size: 0.8rem; color: var(--fg); line-height: 1.7; }
+.eq-src   { font-size: 0.68rem; color: var(--fg3); margin-top: 6px; }
+
+/* ── Footer ─────────────────────────────────────── */
+.site-footer {
+  padding: 20px 24px;
+  border-top: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 0.75rem; color: var(--fg3);
+}
+
+/* ── Loading overlay ────────────────────────────── */
+.py-overlay {
+  position: absolute; inset: 0;
+  background: rgba(13,17,23,0.85);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 14px; z-index: 10;
+  backdrop-filter: blur(4px);
+}
+.py-overlay.hidden { display: none; }
+.spinner {
+  width: 40px; height: 40px;
+  border: 3px solid var(--bg4);
+  border-top-color: var(--acc1);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.py-overlay p { color: var(--fg2); font-size: 0.85rem; }
+
+/* ── Responsive ─────────────────────────────────── */
+@media (max-width: 900px) {
+  .main-grid { grid-template-columns: 1fr; height: auto; max-height: none; }
+  .sim-panel { height: 560px; border-right: none; border-bottom: 1px solid var(--border); }
+  .ctrl-panel { max-height: 480px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══ HEADER ════════════════════════════════════════════════════════════════ -->
+<header class="site-header">
+  <div class="header-brand">
+    <div class="brand-dot"></div>
+    <div>
+      <div class="brand-name">PJPS Simulator</div>
+      <div class="brand-sub">Photophoretic Janus Particle Swarm</div>
+    </div>
+  </div>
+  <nav class="header-links">
+    <a href="#sim">Live Sim</a>
+    <a href="#plots">Plots</a>
+    <a href="#gs">Gray-Scott</a>
+    <a href="#physics">Physics</a>
+  </nav>
+</header>
+
+<!-- ══ HERO ══════════════════════════════════════════════════════════════════ -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-badge">⚛ UCSD Active Matter Hackathon 2026</div>
+    <h1>Light-Driven <span class="hl">Janus Swarms</span></h1>
+    <p>Photophoretic Janus Particle Swarm Simulation — real-time interactive physics
+       grounded in 4 research papers. Control alignment, noise, phototaxis, chirality,
+       boundary conditions and obstacle fields live.</p>
+    <div class="hero-pills">
+      <div class="pill"><div class="pill-dot" style="background:var(--acc1)"></div>Vicsek Alignment</div>
+      <div class="pill"><div class="pill-dot" style="background:var(--acc2)"></div>Phototaxis</div>
+      <div class="pill"><div class="pill-dot" style="background:var(--acc3)"></div>Shadow Obstacle</div>
+      <div class="pill"><div class="pill-dot" style="background:var(--acc4)"></div>Circle Swimmers</div>
+      <div class="pill"><div class="pill-dot" style="background:var(--acc5)"></div>Phase Diagram</div>
+      <div class="pill"><div class="pill-dot" style="background:#fff"></div>Soft Repulsion</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ MAIN SIMULATION GRID ══════════════════════════════════════════════════ -->
+<section id="sim" class="main-grid">
+
+  <!-- Left: Canvas + Metrics -->
+  <div class="sim-panel">
+    <div class="canvas-header">
+      <div class="canvas-title">🔬 Live Simulation — <span id="simStatus" style="color:var(--acc2)">idle</span></div>
+      <div class="canvas-controls">
+        <button class="btn btn-primary" id="btnPlay" onclick="togglePlay()">▶ Play</button>
+        <button class="btn btn-ghost" onclick="resetSim()">↺ Reset</button>
+        <button class="btn btn-ghost" onclick="stepOnce()">⟩ Step</button>
+        <button class="btn btn-ghost" id="btnFullscreen" onclick="toggleFullscreen()" title="Fullscreen">⛶</button>
+      </div>
+    </div>
+
+    <div class="canvas-wrap" id="canvasWrap">
+      <canvas id="simCanvas"></canvas>
+      <div class="py-overlay hidden" id="pyOverlay">
+        <div class="spinner"></div>
+        <p>Running Python simulation…</p>
+      </div>
+    </div>
+
+    <div class="metrics-strip">
+      <div class="metric-cell">
+        <div class="metric-label">Polar Order Φ</div>
+        <div class="metric-val" id="mPolar" style="color:var(--acc1)">—</div>
+        <div class="metric-sub">0=disordered · 1=flock</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-label">Transport Eff Φ_t</div>
+        <div class="metric-val" id="mTransport" style="color:var(--acc2)">—</div>
+        <div class="metric-sub">cos(θ−φ_target)</div>
+      </div>
+      <div class="metric-cell">
+        <div class="metric-label">Target Occupancy</div>
+        <div class="metric-val" id="mOccupancy" style="color:var(--acc4)">—</div>
+        <div class="metric-sub">fraction in delivery zone</div>
+      </div>
+    </div>
+
+    <div class="sparklines">
+      <div class="spark-cell">
+        <div class="spark-label">Polar order history</div>
+        <canvas class="spark-canvas" id="sp1"></canvas>
+      </div>
+      <div class="spark-cell">
+        <div class="spark-label">Transport efficiency history</div>
+        <canvas class="spark-canvas" id="sp2"></canvas>
+      </div>
+      <div class="spark-cell">
+        <div class="spark-label">Target occupancy history</div>
+        <canvas class="spark-canvas" id="sp3"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Controls -->
+  <div class="ctrl-panel" id="ctrlPanel">
+
+    <!-- Status -->
+    <div class="status-bar idle" id="statusBar">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">Ready — press ▶ to start real-time simulation</span>
+    </div>
+
+    <!-- Presets -->
+    <div class="ctrl-section">
+      <div class="ctrl-section-hdr" onclick="toggleSection(this)">
+        <span class="section-icon">⚡</span> Quick Presets
+        <span class="chevron">▾</span>
+      </div>
+      <div class="ctrl-section-body" style="gap:6px">
+        <p style="font-size:0.72rem;color:var(--fg3);margin-bottom:2px">Load a preset and hit ▶ Play to run that demo live.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <button class="btn btn-ghost" style="font-size:0.72rem;justify-content:center" onclick="loadPreset('demo')">🔬 Demo (ABP+Phototaxis)</button>
+          <button class="btn btn-ghost" style="font-size:0.72rem;justify-content:center" onclick="loadPreset('ordered')">🌊 Task 1: Ordered Swarm</button>
+          <button class="btn btn-ghost" style="font-size:0.72rem;justify-content:center" onclick="loadPreset('shadow')">🌑 Task 2: Shadow Nav</button>
+          <button class="btn btn-ghost" style="font-size:0.72rem;justify-content:center" onclick="loadPreset('chiral')">🌀 Chirality Demo</button>
+          <button class="btn btn-ghost" style="font-size:0.72rem;justify-content:center" onclick="loadPreset('disorder')">💨 Disordered Gas</button>
+          <button class="btn btn-ghost" style="font-size:0.72rem;justify-content:center" onclick="loadPreset('gradient')">🌅 Light Gradient</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Swarm Parameters -->
+    <div class="ctrl-section">
+      <div class="ctrl-section-hdr" onclick="toggleSection(this)">
+        <span class="section-icon">🐝</span> Swarm Parameters
+        <span class="chevron">▾</span>
+      </div>
+      <div class="ctrl-section-body">
+        <div class="ctrl-row">
+          <div class="ctrl-row-hdr">
+            <span class="ctrl-name">N — Particles</span>
+            <span class="ctrl-val" id="vN">200</span>
+          </div>
+          <input type="range" id="sN" min="20" max="400" step="10" value="200" oninput="onParam('N',this)">
+        </div>
+        <div class="ctrl-row">
+          <div class="ctrl-row-hdr">
+            <span class="ctrl-name">J — Alignment Strength</span>
+            <span class="ctrl-eq">τ=J·sin(φ−θ)</span>
+            <span class="ctrl-val" id="vJ">1.0</span>
+          </div>
+          <input type="range" class="slider-green" id="sJ" min="0" max="6" step="0.1" value="1.0" oninput="onParam('J',this)">
+        </div>
+        <div class="ctrl-row">
+          <div class="ctrl-row-hdr">
+            <span class="ctrl-name">η — Rotational Noise</span>
+            <span class="ctrl-eq">D_r=η²/2</span>
+            <span class="ctrl-val" id="vEta">0.50</span>
+          </div>
+          <input type="range" class="slider-red" id="sEta" min="0.05" max="6" step="0.05" value="0.50" oninput="onParam('eta',this)">
+        </div>
+        <div class="ctrl-row">
+          <div class="ctrl-row-hdr">
+            <span class="ctrl-name">α — Phototaxis Strength</span>
+            <span class="ctrl-eq">τ=α·sin(φ_tgt−θ)</span>
+            <span class="ctrl-val" id="vAlpha">0.80</span>
+          </div>
+          <input type="range" class="slider-purple" id="sAlpha" min="0" max="3" step="0.05" value="0.80" oninput="onParam('alpha',this)">
+        </div>
+        <div class="ctrl-row">
+          <div class="ctrl-row-hdr">
+            <span class="ctrl-name">v_max — Max Speed</span>
+            <span class="ctrl-eq">v₀=v_max·min(1,I/I₀)</span>
+            <span class="ctrl-val" id="vVmax">1.0</span>
+          </div>
+          <input type="range" class="slider-orange" id="sVmax" min="0.2" max="4" step="0.1" value="1.0" oninput="onParam('v_max',this)">
+        </div>
+        <div class="ctrl-row">
+          <div class="ctrl-row-hdr">
+            <span class="ctrl-name">R_align — Interaction Radius</span>
+            <span class="ctrl-val" id="vRalign">2.0</span>
+          </div>
+          <input type="range" id="sRalign" min="0.5" max="8" step="0.25" value="2.0" oninput="onParam('R_align',this)">
+        </div>
+      </div>
+    </div>
+
+    <!-- Radiation Coupling -->
+    <div class="ctrl-section">
+      <div class="ctrl-section-hdr" onclick="toggleSection(this)">
+        <span class="section-icon">💡</span> Radiation Coupling
+        <span class="chevron">▾</span>
+      </div>
+      <div class="ctrl-section-body">
+        <div class="ctrl-row">
+          <div class="ctrl-row-hdr">
+            <span class="ctrl-name">I_emit — Emission Strength</span>
+            <span class="ctrl-val" id="vIemit">0.30</span>
+          </div>
+          <input type="range" class="slider-orange" id="sIemit" min="0" max="1.5" step="0.05" value="0.30" oninput="onParam('I_emit',this)">
+        </div>
+        <div class="ctrl-row">
+          <div class="ctrl-row-hdr">
+            <span class="ctrl-name">σ_rad — Radiation Decay</span>
+            <span class="ctrl-val" id="vSigmaRad">1.5</span>
+          </div>
+          <input type="range" id="sSigmaRad" min="0.3" max="5" step="0.1" value="1.5" oninput="onParam('sigma_rad',this)">
+        </div>
+        <div class="ctrl-row">
+          <div class="ctrl-row-hdr">
+            <span class="ctrl-name">κ_T — Intensity-dep. Noise</span>
+            <span class="ctrl-eq">η_eff=η·√(1+κ_T·I)</span>
+            <span class="ctrl-val" id="vKappaT">0.00</span>
+          </div>
+          <input type="range" id="sKappaT" min="0" max="1.5" step="0.05" value="0.0" oninput="onParam('kappa_T',this)">
+        </div>
+      </div>
+    </div>
+
+    <!-- Chirality (Paper 3) -->
+    <div class="ctrl-section">
+      <div class="ctrl-section-hdr" onclick="toggleSection(this)">
+        <span class="section-icon">🌀</span> Chirality · Circle Swimmers (Paper 3)
+        <span class="chevron">▾</span>
+      </div>
+      <div class="ctrl-section-body">
+        <p style="font-size:0.75rem;color:var(--fg3);margin-bottom:6px">Nosenko 2020: JPs perform circular/epitrochoidal orbits due to body-fixed torque.</p>
+        <div class="ctrl-row">
+          <div class="ctrl-row-hdr">
+            <span class="ctrl-name">σ_chiral — Spin Spread</span>
+            <span class="ctrl-eq">ω~N(0,σ)</span>
+            <span class="ctrl-val" id="vChiral">0.00</span>
+          </div>
+          <input type="range" class="slider-purple" id="sChiral" min="0" max="1" step="0.02" value="0.0" oninput="onParam('sigma_chiral',this)">
+        </div>
+      </div>
+    </div>
+
+    <!-- Boundary Conditions -->
+    <div class="ctrl-section">
+      <div class="ctrl-section-hdr" onclick="toggleSection(this)">
+        <span class="section-icon">📦</span> Boundary Conditions
+        <span class="chevron">▾</span>
+      </div>
+      <div class="ctrl-section-body">
+        <div class="ctrl-row">
+          <div class="ctrl-name" style="margin-bottom:5px">Boundary Type</div>
+          <select id="selBC" onchange="onBC(this.value)">
+            <option value="periodic">🔄 Periodic (torus)</option>
+            <option value="reflecting">🪞 Reflecting (elastic bounce)</option>
+            <option value="absorbing">🫥 Absorbing (particles escape)</option>
+            <option value="confining">🧲 Confining (soft potential walls)</option>
+          </select>
+        </div>
+        <div class="ctrl-row" id="wallRow" style="display:none">
+          <div class="ctrl-row-hdr">
+            <span class="ctrl-name">Wall Strength</span>
+            <span class="ctrl-val" id="vWall">1.0</span>
+          </div>
+          <input type="range" id="sWall" min="0.1" max="5" step="0.1" value="1.0" oninput="onParam('wall_strength',this)">
+        </div>
+      </div>
+    </div>
+
+    <!-- Obstacle / Field -->
+    <div class="ctrl-section">
+      <div class="ctrl-section-hdr" onclick="toggleSection(this)">
+        <span class="section-icon">🚧</span> Obstacle / Light Field
+        <span class="chevron">▾</span>
+      </div>
+      <div class="ctrl-section-body">
+        <div class="ctrl-row">
+          <div class="ctrl-name" style="margin-bottom:5px">Obstacle Type</div>
+          <select id="selObs" onchange="onObs(this.value)">
+            <option value="none">None</option>
+            <option value="shadow">🌑 Shadow (geometric, Paper 1)</option>
+            <option value="geometric">⬤ Hard wall (solid disk)</option>
+            <option value="gradient">🌅 Light gradient (phototaxis)</option>
+          </select>
+        </div>
+        <div id="obsControls" style="display:none; flex-direction:column; gap:8px">
+          <div class="ctrl-row">
+            <div class="ctrl-row-hdr">
+              <span class="ctrl-name">Obstacle Radius</span>
+              <span class="ctrl-val" id="vObsR">3.0</span>
+            </div>
+            <input type="range" class="slider-red" id="sObsR" min="0.5" max="8" step="0.25" value="3.0" oninput="onParam('obs_radius',this)">
+          </div>
+          <div class="ctrl-row" id="shadowRow">
+            <div class="ctrl-row-hdr">
+              <span class="ctrl-name">Shadow Fraction (0=full block)</span>
+              <span class="ctrl-val" id="vShadow">0.05</span>
+            </div>
+            <input type="range" id="sShadow" min="0" max="1" step="0.01" value="0.05" oninput="onParam('shadow_fraction',this)">
+          </div>
+          <div class="ctrl-row">
+            <div class="ctrl-row-hdr">
+              <span class="ctrl-name">Light Direction (degrees)</span>
+              <span class="ctrl-val" id="vLightDir">0°</span>
+            </div>
+            <input type="range" id="sLightDir" min="0" max="360" step="5" value="0" oninput="onParam('light_dir_deg',this)">
+          </div>
+          <div class="toggle-row">
+            <span class="toggle-label">Drag obstacle with mouse</span>
+            <label class="toggle"><input type="checkbox" id="chkDragObs" checked><span class="toggle-slider"></span></label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Python Backend -->
+    <div class="ctrl-section">
+      <div class="ctrl-section-hdr" onclick="toggleSection(this)">
+        <span class="section-icon">🐍</span> Python Backend Simulation
+        <span class="chevron">▾</span>
+      </div>
+      <div class="ctrl-section-body">
+        <p style="font-size:0.75rem;color:var(--fg3);margin-bottom:8px">Run the full NumPy-vectorised simulation and display results.</p>
+        <div class="ctrl-row">
+          <div class="ctrl-row-hdr">
+            <span class="ctrl-name">n_steps</span>
+            <span class="ctrl-val" id="vNsteps">600</span>
+          </div>
+          <input type="range" id="sNsteps" min="100" max="1500" step="100" value="600" oninput="onParam('n_steps',this)">
+        </div>
+        <button class="run-py-btn" id="btnRunPy" onclick="runPython()">
+          🐍 Run Python Simulation
+        </button>
+        <div id="pyResult" style="display:none;margin-top:10px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.78rem">
+            <div style="background:var(--bg4);border-radius:6px;padding:8px">
+              <div style="color:var(--fg3);margin-bottom:2px">⟨Φ_transport⟩</div>
+              <div id="pyPhi" style="color:var(--acc2);font-weight:700;font-size:1.1rem;font-family:var(--font-mono)">—</div>
+            </div>
+            <div style="background:var(--bg4);border-radius:6px;padding:8px">
+              <div style="color:var(--fg3);margin-bottom:2px">Runtime</div>
+              <div id="pyTime" style="color:var(--acc1);font-weight:700;font-size:1.1rem;font-family:var(--font-mono)">—</div>
+            </div>
+            <div style="background:var(--bg4);border-radius:6px;padding:8px">
+              <div style="color:var(--fg3);margin-bottom:2px">L_persist</div>
+              <div id="pyLp" style="color:var(--acc4);font-weight:700;font-size:1.1rem;font-family:var(--font-mono)">—</div>
+            </div>
+            <div style="background:var(--bg4);border-radius:6px;padding:8px">
+              <div style="color:var(--fg3);margin-bottom:2px">⟨Occupancy⟩</div>
+              <div id="pyOcc" style="color:var(--acc5);font-weight:700;font-size:1.1rem;font-family:var(--font-mono)">—</div>
+            </div>
+          </div>
+          <canvas id="pyChart" height="80" style="width:100%;margin-top:10px;border-radius:6px;background:var(--bg4)"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Display Options -->
+    <div class="ctrl-section">
+      <div class="ctrl-section-hdr" onclick="toggleSection(this)">
+        <span class="section-icon">🎨</span> Display Options
+        <span class="chevron">▾</span>
+      </div>
+      <div class="ctrl-section-body">
+        <div class="toggle-row">
+          <span class="toggle-label">Show velocity arrows</span>
+          <label class="toggle"><input type="checkbox" id="chkArrows" checked><span class="toggle-slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-label">Color by illumination</span>
+          <label class="toggle"><input type="checkbox" id="chkColorI" checked><span class="toggle-slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-label">Show shadow zone</span>
+          <label class="toggle"><input type="checkbox" id="chkShadowVis" checked><span class="toggle-slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-label">Show target delivery zone</span>
+          <label class="toggle"><input type="checkbox" id="chkTarget" checked><span class="toggle-slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-label">Show interaction radius (hover)</span>
+          <label class="toggle"><input type="checkbox" id="chkRadius" ><span class="toggle-slider"></span></label>
+        </div>
+        <div class="ctrl-row" style="margin-top:4px">
+          <div class="ctrl-row-hdr">
+            <span class="ctrl-name">Particle Size</span>
+            <span class="ctrl-val" id="vPSize">4</span>
+          </div>
+          <input type="range" id="sPSize" min="1" max="10" step="0.5" value="4" oninput="onParam('ptSize',this)">
+        </div>
+        <div class="ctrl-row">
+          <div class="ctrl-row-hdr">
+            <span class="ctrl-name">Arrow Scale</span>
+            <span class="ctrl-val" id="vArrowSc">1.0</span>
+          </div>
+          <input type="range" id="sArrowSc" min="0.2" max="3" step="0.1" value="1.0" oninput="onParam('arrowScale',this)">
+        </div>
+        <div class="ctrl-row">
+          <div class="ctrl-row-hdr">
+            <span class="ctrl-name">Simulation Speed (×)</span>
+            <span class="ctrl-val" id="vSpeed">1</span>
+          </div>
+          <input type="range" id="sSpeed" min="1" max="8" step="1" value="1" oninput="onParam('stepsPerFrame',this)">
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ══ PLOT GALLERY ════════════════════════════════════════════════════════════ -->
+<section id="plots" class="plots-section">
+  <div class="plots-section-title">
+    <h2>Simulation Outputs</h2>
+    <div class="section-line"></div>
+    <span style="font-size:0.75rem;color:var(--fg3)">Click ▶ Load & Run to load any preset into the live simulation above</span>
+  </div>
+  <div class="plots-grid">
+    <div class="plot-card">
+      <div class="plot-card-hdr">
+        <div class="plot-card-title">Demo — Final Swarm State</div>
+        <span class="plot-card-badge badge-demo">Demo</span>
+      </div>
+      <img class="plot-img" src="/plots/demo_snapshot.png" alt="Demo Snapshot" onerror="this.style.display='none'">
+      <div class="plot-card-footer" style="display:flex;justify-content:space-between;align-items:center">
+        <span>Color = I_local · Arrows = orientation &amp; speed</span>
+        <button class="btn btn-ghost" style="font-size:0.68rem;padding:3px 8px" onclick="loadPreset('demo');scrollToSim()">▶ Load &amp; Run</button>
+      </div>
+    </div>
+    <div class="plot-card">
+      <div class="plot-card-hdr">
+        <div class="plot-card-title">Demo — Time Series Metrics</div>
+        <span class="plot-card-badge badge-demo">Demo</span>
+      </div>
+      <img class="plot-img" src="/plots/demo_timeseries.png" alt="Demo Timeseries" onerror="this.style.display='none'">
+      <div class="plot-card-footer" style="display:flex;justify-content:space-between;align-items:center">
+        <span>Φ_polar, Φ_transport, Occupancy · Dashed = transient</span>
+        <button class="btn btn-ghost" style="font-size:0.68rem;padding:3px 8px" onclick="loadPreset('demo');scrollToSim()">▶ Load &amp; Run</button>
+      </div>
+    </div>
+    <div class="plot-card">
+      <div class="plot-card-hdr">
+        <div class="plot-card-title">Task 1 — Phase Diagram (η, J)</div>
+        <span class="plot-card-badge badge-task1">Task 1</span>
+      </div>
+      <img class="plot-img" src="/plots/phase_diagram.png" alt="Phase Diagram" onerror="this.style.display='none'">
+      <div class="plot-card-footer" style="display:flex;justify-content:space-between;align-items:center">
+        <span>Streaming phase vs disordered gas · Φ=0.5 boundary</span>
+        <button class="btn btn-ghost" style="font-size:0.68rem;padding:3px 8px" onclick="loadPreset('ordered');scrollToSim()">▶ Ordered Swarm</button>
+      </div>
+    </div>
+    <div class="plot-card">
+      <div class="plot-card-hdr">
+        <div class="plot-card-title">Task 2 — Shadow Obstacle Navigation</div>
+        <span class="plot-card-badge badge-task2">Task 2</span>
+      </div>
+      <img class="plot-img" src="/plots/obstacle_comparison.png" alt="Obstacle Comparison" onerror="this.style.display='none'">
+      <div class="plot-card-footer" style="display:flex;justify-content:space-between;align-items:center">
+        <span>Collective rescue: swarm (J&gt;0) outperforms J=0 past shadow</span>
+        <button class="btn btn-ghost" style="font-size:0.68rem;padding:3px 8px" onclick="loadPreset('shadow');scrollToSim()">▶ Shadow Nav</button>
+      </div>
+    </div>
+    <div class="plot-card">
+      <div class="plot-card-hdr">
+        <div class="plot-card-title">Chirality — Circle Swimmer Trajectories (Paper 3)</div>
+        <span class="plot-card-badge badge-extra">Bonus</span>
+      </div>
+      <img class="plot-img" src="/plots/chirality_demo.png" alt="Chirality Demo" onerror="this.style.display='none'">
+      <div class="plot-card-footer" style="display:flex;justify-content:space-between;align-items:center">
+        <span>Nosenko 2020: circular/epitrochoidal paths from body-fixed torque</span>
+        <button class="btn btn-ghost" style="font-size:0.68rem;padding:3px 8px" onclick="loadPreset('chiral');scrollToSim()">▶ Chirality</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ GRAY-SCOTT REACTION-DIFFUSION ═════════════════════════════════════════ -->
+<section id="gs" style="padding:32px 24px;border-top:1px solid var(--border);background:var(--bg)">
+  <div style="max-width:1100px;margin:0 auto">
+    <div class="plots-section-title">
+      <h2>Gray-Scott Reaction-Diffusion</h2>
+      <div class="section-line"></div>
+      <span style="font-size:0.75rem;color:var(--fg3)">∂u/∂t = Du∇²u − uv² + f(1−u) &nbsp;|&nbsp; ∂v/∂t = Dv∇²v + uv² − (f+k)v</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 280px;gap:16px;align-items:start">
+      <!-- Canvas -->
+      <div style="background:#000;border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;position:relative">
+        <canvas id="gsCanvas" style="display:block;width:100%;image-rendering:pixelated"></canvas>
+        <div style="position:absolute;top:8px;left:8px;font-size:0.7rem;color:rgba(255,255,255,0.4);font-family:monospace" id="gsLabel">Gray-Scott · u field</div>
+      </div>
+      <!-- Controls -->
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px">
+          <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--fg3);margin-bottom:10px">⚗ PDE Parameters</div>
+          <div class="ctrl-row">
+            <div class="ctrl-row-hdr"><span class="ctrl-name">Feed rate f</span><span class="ctrl-val" id="gsF_val">0.055</span></div>
+            <input type="range" id="gsF" min="0.01" max="0.1" step="0.001" value="0.055" class="slider-green" oninput="document.getElementById('gsF_val').textContent=parseFloat(this.value).toFixed(3);gsRestart()">
+          </div>
+          <div class="ctrl-row" style="margin-top:8px">
+            <div class="ctrl-row-hdr"><span class="ctrl-name">Kill rate k</span><span class="ctrl-val" id="gsK_val">0.062</span></div>
+            <input type="range" id="gsK" min="0.04" max="0.08" step="0.001" value="0.062" class="slider-red" oninput="document.getElementById('gsK_val').textContent=parseFloat(this.value).toFixed(3);gsRestart()">
+          </div>
+          <div class="ctrl-row" style="margin-top:8px">
+            <div class="ctrl-row-hdr"><span class="ctrl-name">Du (activator diff.)</span><span class="ctrl-val" id="gsDu_val">0.16</span></div>
+            <input type="range" id="gsDu" min="0.05" max="0.4" step="0.01" value="0.16" oninput="document.getElementById('gsDu_val').textContent=parseFloat(this.value).toFixed(2);gsRestart()">
+          </div>
+          <div class="ctrl-row" style="margin-top:8px">
+            <div class="ctrl-row-hdr"><span class="ctrl-name">Dv (inhibitor diff.)</span><span class="ctrl-val" id="gsDv_val">0.08</span></div>
+            <input type="range" id="gsDv" min="0.02" max="0.2" step="0.005" value="0.08" oninput="document.getElementById('gsDv_val').textContent=parseFloat(this.value).toFixed(3);gsRestart()">
+          </div>
+        </div>
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px">
+          <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--fg3);margin-bottom:8px">🎨 Pattern Presets</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <button class="btn btn-ghost" style="font-size:0.72rem;justify-content:flex-start" onclick="gsLoadPreset('spots')">⚫ Spots (mitosis)</button>
+            <button class="btn btn-ghost" style="font-size:0.72rem;justify-content:flex-start" onclick="gsLoadPreset('stripes')">〰 Stripes (coral)</button>
+            <button class="btn btn-ghost" style="font-size:0.72rem;justify-content:flex-start" onclick="gsLoadPreset('maze')">🌀 Maze / Labyrinth</button>
+            <button class="btn btn-ghost" style="font-size:0.72rem;justify-content:flex-start" onclick="gsLoadPreset('holes')">⬜ Holes</button>
+            <button class="btn btn-ghost" style="font-size:0.72rem;justify-content:flex-start" onclick="gsLoadPreset('waves')">🌊 Waves (λ-ω)</button>
+          </div>
+        </div>
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px">
+          <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--fg3);margin-bottom:8px">▶ Control</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-primary" id="gsBtnPlay" onclick="gsToggle()" style="flex:1">▶ Play</button>
+            <button class="btn btn-ghost" onclick="gsRestart()" style="flex:1">↺ Reset</button>
+          </div>
+          <div style="margin-top:8px;font-size:0.7rem;color:var(--fg3)" id="gsInfo">Ready</div>
+        </div>
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:10px;font-size:0.72rem;color:var(--fg3);line-height:1.6">
+          <div style="color:var(--acc4);font-weight:700;margin-bottom:4px">Biology connection</div>
+          Gray-Scott models Turing instability seen in Janus-particle ensembles:
+          activator (u) = particle density, inhibitor (v) = depleted nutrient/light.
+          The f–k plane maps directly to the η–J phase diagram of the PJPS swarm.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ PHYSICS REFERENCE ════════════════════════════════════════════════════ -->
+<section id="physics" class="physics-section">
+  <div style="max-width:1100px;margin:0 auto">
+    <div class="plots-section-title">
+      <h2>Physics Reference</h2>
+      <div class="section-line"></div>
+      <span style="font-size:0.75rem;color:var(--fg3)">Equations extracted from 4 uploaded papers</span>
+    </div>
+    <div class="eq-grid">
+      <div class="eq-card">
+        <div class="eq-title">Photophoretic Force · Krauss 2006 Eq.1</div>
+        <div class="eq-body">F_ph = (π/3)·a²·I·J₁·(πmg/2kT)^½<br>    × αE·ψ₁ / (αE + 15ΛKn(1−αE)/4<br>    + αE·Λ·ψ₂)<br>→ Free molecular (Kn≫1): F_ph ∝ a²·I</div>
+        <div class="eq-src">Source: Beresnev et al. 1993 via Krauss 2006 §2</div>
+      </div>
+      <div class="eq-card">
+        <div class="eq-title">Propulsion Speed · Koss 2022 Eq.1</div>
+        <div class="eq-body">F_ph = (π·a³·p·I)/(6·k_th·T_buf)<br>v₀ = F_ph/(6πηa) ∝ I<br>→ Code: v₀(i) = v_max·min(1, I_local/I₀)</div>
+        <div class="eq-src">Source: Koss et al. 2022, Molecules §2</div>
+      </div>
+      <div class="eq-card">
+        <div class="eq-title">Rotational Diffusion · Lisin 2021 Eq.1</div>
+        <div class="eq-body">Dr = ω = 3D_T/(4R²) = kBT/(8πηa³)<br>D_T = T/(νM) = kBT/(6πηR)<br>η_noise = √(2·Dr)  →  Dr = η²/2<br>L_S = Vs/Dr  (persistence length)</div>
+        <div class="eq-src">Source: Lisin et al. 2021, PCCP Eqs.1,7</div>
+      </div>
+      <div class="eq-card">
+        <div class="eq-title">ABP Overdamped Langevin · Lisin 2021 Eqs.3-4</div>
+        <div class="eq-body">ẋ = Vs·cosθ + ξx,  ẏ = Vs·sinθ + ξy<br>dθ/dt = ξθ  (overdamped: ẍ=0, θ̈=0)<br>MSD: ⟨(x−x₀)²⟩=(2D_T+Vs²/Dr)t<br>    + Vs²/Dr²·(e^{-Drt}−1)</div>
+        <div class="eq-src">Source: Lisin et al. 2021, PCCP §2.1-2.2</div>
+      </div>
+      <div class="eq-card">
+        <div class="eq-title">Photophoretic Force · Nosenko 2020 Eq.1</div>
+        <div class="eq-body">F_ph = πrp²·kB·n0·T0·<br>    [α₁·(T₁/T₀-1) − α₂·(T₂/T₀-1)]<br>ΔT ≈ 10⁻² K for laser 99mW, 9.27µm Pt-JP<br>F_ph ∝ p_Ar  (linear pressure dependence)</div>
+        <div class="eq-src">Source: Nosenko et al. 2020, PRR §IV</div>
+      </div>
+      <div class="eq-card">
+        <div class="eq-title">Full PJPS Orientation Update</div>
+        <div class="eq-body">θ(t+dt) = θ(t)<br>  + J·sin(φ_align−θ)·dt  [alignment]<br>  + α·sin(φ_target−θ)·dt [phototaxis]<br>  + ω_self·dt              [chirality]<br>  + η_eff·ξ·√dt           [noise]</div>
+        <div class="eq-src">PJPS Model — MASTER_CONTEXT §4.10 + Paper 3</div>
+      </div>
+      <div class="eq-card">
+        <div class="eq-title">Inter-particle Radiation Coupling</div>
+        <div class="eq-body">I_rad(j→i) = I_emit<br>  · exp(−r_ij²/σ_rad²)<br>  · max(0, ê_j·ê_{j→i})<br>I_local(i) = I_ext(i) + Σ_j I_rad(j→i)</div>
+        <div class="eq-src">PJPS Model — MASTER_CONTEXT §4.4</div>
+      </div>
+      <div class="eq-card">
+        <div class="eq-title">Phase Boundary Scaling</div>
+        <div class="eq-body">η_c(J) ∝ √(J·ρ·R²)<br>where ρ=N/L² = 0.333 (our system)<br>Streaming phase: η&lt;η_c  →  Φ≈1<br>Disordered gas:  η&gt;η_c  →  Φ≈0</div>
+        <div class="eq-src">Vicsek 1995 + Lisin 2021 mean-field scaling</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ FOOTER ════════════════════════════════════════════════════════════════ -->
+<footer class="site-footer">
+  <span>PJPS · UCSD Vibe Coding Active Matter Hackathon 2026</span>
+  <span>Physics grounded in Krauss 2006 · Lisin 2021 · Nosenko 2020 · Koss 2022</span>
+</footer>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     JAVASCRIPT — REAL-TIME SIMULATION ENGINE
+══════════════════════════════════════════════════════════════════════════════ -->
+<script>
+"use strict";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PLASMA COLORMAP (matches Python matplotlib)
+// ─────────────────────────────────────────────────────────────────────────────
+const PLASMA_LUT = (() => {
+  const pts = [
+    [0.050383, 0.029803, 0.527975],
+    [0.177423, 0.016154, 0.562738],
+    [0.314377, 0.008695, 0.575971],
+    [0.440785, 0.013834, 0.566118],
+    [0.568201, 0.060389, 0.518965],
+    [0.671016, 0.144659, 0.440669],
+    [0.771584, 0.233951, 0.349490],
+    [0.852862, 0.334283, 0.256845],
+    [0.918490, 0.443529, 0.166405],
+    [0.960949, 0.567458, 0.074755],
+    [0.983868, 0.701402, 0.025198],
+    [0.987053, 0.843547, 0.066905],
+    [0.940015, 0.975158, 0.131326],
+  ];
+  return (t) => {
+    t = Math.max(0, Math.min(1, t));
+    const idx = t * (pts.length - 1);
+    const i0 = Math.min(Math.floor(idx), pts.length - 2);
+    const f = idx - i0;
+    const r = pts[i0][0] + f * (pts[i0+1][0] - pts[i0][0]);
+    const g = pts[i0][1] + f * (pts[i0+1][1] - pts[i0][1]);
+    const b = pts[i0][2] + f * (pts[i0+1][2] - pts[i0][2]);
+    return `rgb(${Math.round(r*255)},${Math.round(g*255)},${Math.round(b*255)})`;
+  };
+})();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SIMULATION STATE
+// ─────────────────────────────────────────────────────────────────────────────
+const SIM = {
+  // Parameters (mirrored from controls)
+  N: 200, L: 30.0,
+  J: 1.0, eta: 0.5, alpha: 0.8,
+  v_max: 1.0, R_align: 2.0,
+  I_emit: 0.3, sigma_rad: 1.5, I_0: 1.0, R_rad: 2.0,
+  sigma_chiral: 0.0, kappa_T: 0.0,
+  obs_radius: 3.0, shadow_fraction: 0.05, light_dir_deg: 0,
+  obstacle_type: 'none',
+  boundary: 'periodic',
+  wall_strength: 1.0,
+  dt: 0.05,
+  stepsPerFrame: 1,
+  ptSize: 4, arrowScale: 1.0,
+
+  // Particle arrays
+  x: null, y: null, theta: null, omega: null,
+  v0: null, I_local: null,
+
+  // Target
+  tx: 22.5, ty: 22.5,
+
+  // Obstacle position (draggable)
+  ox: 15.0, oy: 15.0,
+
+  // Metrics history
+  hist_polar: [], hist_transport: [], hist_occupancy: [],
+  MAX_HIST: 300,
+
+  // Animation
+  running: false, animId: null, frameCount: 0,
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INITIALISE PARTICLES
+// ─────────────────────────────────────────────────────────────────────────────
+function initParticles() {
+  const N = SIM.N;
+  SIM.x      = new Float64Array(N);
+  SIM.y      = new Float64Array(N);
+  SIM.theta  = new Float64Array(N);
+  SIM.omega  = new Float64Array(N);
+  SIM.v0     = new Float64Array(N);
+  SIM.I_local= new Float64Array(N);
+
+  // Seeded PRNG (mulberry32)
+  let rngState = 12345 + N;
+  const rng = () => {
+    rngState |= 0; rngState = rngState + 0x6D2B79F5 | 0;
+    let t = Math.imul(rngState ^ rngState >>> 15, 1 | rngState);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+  const randn = () => {
+    // Box-Muller
+    const u = rng() + 1e-10, v = rng();
+    return Math.sqrt(-2*Math.log(u)) * Math.cos(2*Math.PI*v);
+  };
+
+  for (let i = 0; i < N; i++) {
+    SIM.x[i] = rng() * SIM.L;
+    SIM.y[i] = rng() * SIM.L;
+    SIM.theta[i] = rng() * 2 * Math.PI;
+    SIM.omega[i] = SIM.sigma_chiral * randn();
+  }
+
+  SIM.hist_polar = []; SIM.hist_transport = []; SIM.hist_occupancy = [];
+  SIM.frameCount = 0;
+  SIM.ox = SIM.L * 0.5; SIM.oy = SIM.L * 0.5;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MINIMUM IMAGE
+// ─────────────────────────────────────────────────────────────────────────────
+function minImg(d, L) {
+  return d - L * Math.round(d / L);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SHADOW TEST (geometric ray-casting, Paper 1)
+// ─────────────────────────────────────────────────────────────────────────────
+function inShadow(px, py, ox, oy, obsR, ldx, ldy) {
+  // Shadow axis = -light_dir
+  const sx = -ldx, sy = -ldy;
+  const tx = px - ox, ty = py - oy;
+  const proj = tx*sx + ty*sy;
+  if (proj <= 0) return false;
+  const perpX = tx - proj*sx, perpY = ty - proj*sy;
+  return (perpX*perpX + perpY*perpY) < obsR*obsR;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SIMULATION STEP
+// ─────────────────────────────────────────────────────────────────────────────
+function simStep() {
+  const N  = SIM.N;
+  const L  = SIM.L;
+  const dt = SIM.dt;
+  const J  = SIM.J;
+  const eta = SIM.eta;
+  const alpha = SIM.alpha;
+  const v_max = SIM.v_max;
+  const R_align = SIM.R_align;
+  const I_emit = SIM.I_emit;
+  const sigma_rad = SIM.sigma_rad;
+  const I_0 = SIM.I_0;
+  const R_rad = SIM.R_rad;
+  const kappa_T = SIM.kappa_T;
+  const obsR = SIM.obs_radius;
+  const shadF = SIM.shadow_fraction;
+  const ldRad = SIM.light_dir_deg * Math.PI / 180;
+  const ldx = Math.cos(ldRad), ldy = Math.sin(ldRad);
+  const bc = SIM.boundary;
+  const obsType = SIM.obstacle_type;
+  const ox = SIM.ox, oy = SIM.oy;
+
+  const newTheta = new Float64Array(N);
+  const newX = new Float64Array(N);
+  const newY = new Float64Array(N);
+
+  // Pre-compute trig
+  const cosT = new Float64Array(N);
+  const sinT = new Float64Array(N);
+  for (let i = 0; i < N; i++) {
+    cosT[i] = Math.cos(SIM.theta[i]);
+    sinT[i] = Math.sin(SIM.theta[i]);
+  }
+
+  // Pre-compute I_ext (external illumination)
+  const I_ext = new Float64Array(N).fill(I_0);
+  if (obsType === 'shadow') {
+    for (let i = 0; i < N; i++) {
+      if (inShadow(SIM.x[i], SIM.y[i], ox, oy, obsR, ldx, ldy)) {
+        I_ext[i] *= shadF;
+      }
+    }
+  } else if (obsType === 'gradient') {
+    for (let i = 0; i < N; i++) {
+      I_ext[i] = I_0 * (1.0 + 0.5 * SIM.x[i] / L);
+    }
+  }
+
+  // Main loop
+  for (let i = 0; i < N; i++) {
+    const xi = SIM.x[i], yi = SIM.y[i];
+
+    // ── Local radiation from neighbours ────────────────────────────────────
+    let I_rad = 0;
+    let sinSum = 0, cosSum = 0, nbrCount = 0;
+
+    for (let j = 0; j < N; j++) {
+      if (j === i) continue;
+      let dx, dy;
+      if (bc === 'periodic') {
+        dx = minImg(SIM.x[j] - xi, L);
+        dy = minImg(SIM.y[j] - yi, L);
+      } else {
+        dx = SIM.x[j] - xi;
+        dy = SIM.y[j] - yi;
+      }
+      const d2 = dx*dx + dy*dy;
+      const d  = Math.sqrt(d2);
+
+      // Alignment
+      if (d < R_align && d > 0) {
+        sinSum += sinT[j]; cosSum += cosT[j]; nbrCount++;
+      }
+
+      // Radiation: directional cap emission (Paper 3)
+      if (d < R_rad && d > 0) {
+        // ê_{j→i} direction
+        const ejiX = -dx/d, ejiY = -dy/d;
+        // dot(ê_cap_j, ê_{j→i})
+        const dotCap = cosT[j]*ejiX + sinT[j]*ejiY;
+        const capFactor = Math.max(0, dotCap);
+        I_rad += I_emit * Math.exp(-d2 / (sigma_rad*sigma_rad)) * capFactor;
+      }
+    }
+
+    // ── Total illumination & speed ──────────────────────────────────────────
+    SIM.I_local[i] = I_ext[i] + I_rad;
+    SIM.v0[i] = v_max * Math.min(1, SIM.I_local[i] / I_0);
+
+    // ── Alignment torque ───────────────────────────────────────────────────
+    let tau_align = 0;
+    if (nbrCount > 0) {
+      const phiAlign = Math.atan2(sinSum, cosSum);
+      tau_align = J * Math.sin(phiAlign - SIM.theta[i]);
+    }
+
+    // ── Phototactic torque ─────────────────────────────────────────────────
+    const toTgtX = SIM.tx - xi, toTgtY = SIM.ty - yi;
+    const phiTgt = Math.atan2(toTgtY, toTgtX);
+    const tau_photo = alpha * Math.sin(phiTgt - SIM.theta[i]);
+
+    // ── Chirality (Paper 3) ────────────────────────────────────────────────
+    const tau_chiral = SIM.omega[i];
+
+    // ── Intensity-dependent noise (Paper 4) ────────────────────────────────
+    const eta_eff = eta * Math.sqrt(1 + kappa_T * SIM.I_local[i] / (I_0 + 1e-10));
+    const noise = eta_eff * gaussRand() * Math.sqrt(dt);
+
+    // ── Orientation update ─────────────────────────────────────────────────
+    newTheta[i] = SIM.theta[i]
+      + (tau_align + tau_photo) * dt
+      + tau_chiral * dt
+      + noise;
+
+    // ── Position update ────────────────────────────────────────────────────
+    let nx = xi + SIM.v0[i] * Math.cos(newTheta[i]) * dt;
+    let ny = yi + SIM.v0[i] * Math.sin(newTheta[i]) * dt;
+
+    // Soft repulsion (simple linear soft-core, fast for JS)
+    for (let j = 0; j < N; j++) {
+      if (j === i) continue;
+      const sdx = xi - SIM.x[j], sdy = yi - SIM.y[j];
+      const sd = Math.sqrt(sdx*sdx + sdy*sdy);
+      const sigma = 1.0; // contact distance
+      if (sd < sigma && sd > 0.001) {
+        const f = 0.3 * (1.0 - sd/sigma) / sd * dt;
+        nx += sdx * f;
+        ny += sdy * f;
+      }
+    }
+
+    // ── Boundary conditions ────────────────────────────────────────────────
+    if (bc === 'periodic') {
+      nx = ((nx % L) + L) % L;
+      ny = ((ny % L) + L) % L;
+    } else if (bc === 'reflecting') {
+      if (nx < 0) { nx = -nx; newTheta[i] = Math.PI - newTheta[i]; }
+      if (nx > L) { nx = 2*L - nx; newTheta[i] = Math.PI - newTheta[i]; }
+      if (ny < 0) { ny = -ny; newTheta[i] = -newTheta[i]; }
+      if (ny > L) { ny = 2*L - ny; newTheta[i] = -newTheta[i]; }
+      nx = Math.max(0.01, Math.min(L-0.01, nx));
+      ny = Math.max(0.01, Math.min(L-0.01, ny));
+    } else if (bc === 'absorbing') {
+      if (nx < 0 || nx > L || ny < 0 || ny > L) {
+        // Re-inject from random edge
+        const edge = Math.floor(Math.random() * 4);
+        nx = edge === 0 ? 0.1 : edge === 1 ? L-0.1 : Math.random()*L;
+        ny = edge === 2 ? 0.1 : edge === 3 ? L-0.1 : Math.random()*L;
+        newTheta[i] = Math.random() * 2 * Math.PI;
+      }
+    } else if (bc === 'confining') {
+      // Soft walls: push back toward center when outside
+      const ks = SIM.wall_strength;
+      const margin = 1.5;
+      if (nx < margin) { nx += ks * (margin - nx) * dt; newTheta[i] = 0; }
+      if (nx > L-margin) { nx -= ks * (nx - (L-margin)) * dt; newTheta[i] = Math.PI; }
+      if (ny < margin) { ny += ks * (margin - ny) * dt; newTheta[i] = Math.PI/2; }
+      if (ny > L-margin) { ny -= ks * (ny - (L-margin)) * dt; newTheta[i] = -Math.PI/2; }
+      nx = Math.max(0.01, Math.min(L-0.01, nx));
+      ny = Math.max(0.01, Math.min(L-0.01, ny));
+    }
+
+    // ── Geometric obstacle (hard wall) ────────────────────────────────────
+    if (obsType === 'geometric' || obsType === 'shadow') {
+      const dox = nx - ox, doy = ny - oy;
+      const dob = Math.sqrt(dox*dox + doy*doy);
+      if (dob < obsR) {
+        const norm = 1/(dob+1e-10);
+        nx = ox + dox*norm * obsR * 1.02;
+        ny = oy + doy*norm * obsR * 1.02;
+        newTheta[i] = Math.atan2(doy, dox);
+      }
+    }
+
+    newX[i] = nx;
+    newY[i] = ny;
+  }
+
+  // Commit
+  SIM.x.set(newX);
+  SIM.y.set(newY);
+  SIM.theta.set(newTheta);
+  SIM.frameCount++;
+}
+
+// Fast Gaussian (Box-Muller)
+let _gaussExtra = null;
+function gaussRand() {
+  if (_gaussExtra !== null) { const v = _gaussExtra; _gaussExtra = null; return v; }
+  const u = Math.random() + 1e-14, v = Math.random();
+  const s = Math.sqrt(-2*Math.log(u));
+  _gaussExtra = s * Math.sin(2*Math.PI*v);
+  return s * Math.cos(2*Math.PI*v);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OBSERVABLES
+// ─────────────────────────────────────────────────────────────────────────────
+function computeObservables() {
+  const N = SIM.N;
+  let sr = 0, cr = 0;
+  let cosTSum = 0;
+  let occ = 0;
+  const rZone = 2.0;
+
+  for (let i = 0; i < N; i++) {
+    sr += Math.sin(SIM.theta[i]); cr += Math.cos(SIM.theta[i]);
+    const dx = SIM.tx - SIM.x[i], dy = SIM.ty - SIM.y[i];
+    const phiTgt = Math.atan2(dy, dx);
+    cosTSum += Math.cos(SIM.theta[i] - phiTgt);
+    if (dx*dx + dy*dy < rZone*rZone) occ++;
+  }
+
+  return {
+    polar:     Math.sqrt(sr*sr + cr*cr) / N,
+    transport: cosTSum / N,
+    occupancy: occ / N,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RENDER
+// ─────────────────────────────────────────────────────────────────────────────
+const canvas = document.getElementById('simCanvas');
+const ctx    = canvas.getContext('2d');
+
+function resizeCanvas() {
+  const wrap = document.getElementById('canvasWrap');
+  canvas.width  = wrap.clientWidth;
+  canvas.height = wrap.clientHeight;
+}
+
+function worldToScreen(wx, wy) {
+  const scale = Math.min(canvas.width, canvas.height) / SIM.L;
+  const offX = (canvas.width  - SIM.L * scale) / 2;
+  const offY = (canvas.height - SIM.L * scale) / 2;
+  return [wx * scale + offX, canvas.height - (wy * scale + offY)];
+}
+function getScale() {
+  return Math.min(canvas.width, canvas.height) / SIM.L;
+}
+
+function render() {
+  const N = SIM.N;
+  const scale = getScale();
+  const W = canvas.width, H = canvas.height;
+  const offX = (W - SIM.L * scale) / 2;
+  const offY = (H - SIM.L * scale) / 2;
+  const sx = (wx) => wx * scale + offX;
+  const sy = (wy) => H - (wy * scale + offY);
+
+  // ── Clear ──────────────────────────────────────────────────────────────────
+  ctx.fillStyle = '#050810';
+  ctx.fillRect(0, 0, W, H);
+
+  // ── World boundary ─────────────────────────────────────────────────────────
+  ctx.strokeStyle = '#21262d';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(offX, offY, SIM.L * scale, SIM.L * scale);
+
+  // ── Shadow zone visualisation ──────────────────────────────────────────────
+  const ldRad = SIM.light_dir_deg * Math.PI / 180;
+  const ldx = Math.cos(ldRad), ldy = Math.sin(ldRad);
+  if (document.getElementById('chkShadowVis').checked &&
+      (SIM.obstacle_type === 'shadow' || SIM.obstacle_type === 'geometric')) {
+    const ox = SIM.ox, oy = SIM.oy, obsR = SIM.obs_radius;
+    const [ocx, ocy] = [sx(ox), sy(oy)];
+
+    // Shadow cone (extend shadow_length units in shadow direction)
+    const sdx = -ldx, sdy = -ldy;
+    const shadowLen = SIM.L * 1.5;
+    // Perpendicular to shadow axis
+    const perpX = sdy, perpY = -sdx;
+    const r = obsR * scale;
+
+    ctx.beginPath();
+    ctx.moveTo(ocx + perpX*r, ocy - perpY*r);
+    ctx.lineTo(ocx + perpX*r + sdx*shadowLen*scale, ocy - perpY*r - sdy*shadowLen*scale);
+    ctx.lineTo(ocx - perpX*r + sdx*shadowLen*scale, ocy + perpY*r - sdy*shadowLen*scale);
+    ctx.lineTo(ocx - perpX*r, ocy + perpY*r);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(88,30,15,0.22)';
+    ctx.fill();
+
+    // Obstacle disk
+    ctx.beginPath();
+    ctx.arc(ocx, ocy, obsR * scale, 0, 2*Math.PI);
+    ctx.fillStyle = 'rgba(247,129,102,0.65)';
+    ctx.fill();
+    ctx.strokeStyle = '#f78166';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  // ── Target delivery zone ───────────────────────────────────────────────────
+  if (document.getElementById('chkTarget').checked) {
+    const [tx, ty] = [sx(SIM.tx), sy(SIM.ty)];
+    const rZone = 2.0 * scale;
+    ctx.beginPath();
+    ctx.arc(tx, ty, rZone, 0, 2*Math.PI);
+    ctx.fillStyle   = 'rgba(63,185,80,0.12)';
+    ctx.strokeStyle = 'rgba(63,185,80,0.6)';
+    ctx.lineWidth   = 1.5;
+    ctx.fill(); ctx.stroke();
+    // Star marker
+    ctx.fillStyle = '#3fb950';
+    ctx.font = `${Math.max(12, scale*0.7)}px sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('★', tx, ty);
+  }
+
+  // ── Particles ──────────────────────────────────────────────────────────────
+  const showArrows = document.getElementById('chkArrows').checked;
+  const colorByI   = document.getElementById('chkColorI').checked;
+  const ptR        = SIM.ptSize;
+  const arrowSc    = SIM.arrowScale * scale * 0.055;
+  let maxI = SIM.I_0 * 1.2;
+  for (let _i = 0; _i < N; _i++) if (SIM.I_local[_i] > maxI) maxI = SIM.I_local[_i];
+
+  for (let i = 0; i < N; i++) {
+    const px = sx(SIM.x[i]), py = sy(SIM.y[i]);
+    const t = colorByI ? SIM.I_local[i] / maxI : 0.65;
+    const col = PLASMA_LUT(t);
+
+    // Particle dot
+    ctx.beginPath();
+    ctx.arc(px, py, ptR, 0, 2*Math.PI);
+    ctx.fillStyle = col;
+    ctx.fill();
+
+    // Arrow (velocity direction)
+    if (showArrows) {
+      const v = SIM.v0[i];
+      const ax = Math.cos(SIM.theta[i]) * arrowSc * v;
+      const ay = -Math.sin(SIM.theta[i]) * arrowSc * v;
+      ctx.beginPath();
+      ctx.moveTo(px, py);
+      ctx.lineTo(px + ax, py + ay);
+      ctx.strokeStyle = `rgba(230,237,243,0.55)`;
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+    }
+  }
+
+  // ── Frame counter ──────────────────────────────────────────────────────────
+  ctx.fillStyle = '#484f58';
+  ctx.font = '10px monospace';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+  ctx.fillText(`t=${(SIM.frameCount * SIM.dt).toFixed(1)}  N=${N}  J=${SIM.J}  η=${SIM.eta}  BC:${SIM.boundary}`, 4, H-2);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SPARKLINE RENDERER
+// ─────────────────────────────────────────────────────────────────────────────
+function drawSparkline(canvasId, data, color) {
+  const c = document.getElementById(canvasId);
+  if (!c) return;
+  c.width = c.parentElement.clientWidth;
+  const cx = c.getContext('2d');
+  const W = c.width, H = c.height;
+  cx.clearRect(0, 0, W, H);
+  if (data.length < 2) return;
+
+  const min = -1, max = 1;
+  const scaleY = (v) => H - 2 - ((v - min)/(max - min)) * (H - 4);
+
+  // Zero line
+  cx.strokeStyle = '#30363d'; cx.lineWidth = 0.5;
+  cx.beginPath();
+  cx.moveTo(0, scaleY(0)); cx.lineTo(W, scaleY(0)); cx.stroke();
+
+  // Data line
+  cx.strokeStyle = color; cx.lineWidth = 1.5;
+  cx.beginPath();
+  const step = W / (data.length - 1);
+  for (let i = 0; i < data.length; i++) {
+    const x = i * step, y = scaleY(Math.max(min, Math.min(max, data[i])));
+    i === 0 ? cx.moveTo(x, y) : cx.lineTo(x, y);
+  }
+  cx.stroke();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ANIMATION LOOP
+// ─────────────────────────────────────────────────────────────────────────────
+function animate() {
+  if (!SIM.running) return;
+
+  const spf = SIM.stepsPerFrame;
+  for (let s = 0; s < spf; s++) simStep();
+
+  render();
+
+  const obs = computeObservables();
+  SIM.hist_polar.push(obs.polar);
+  SIM.hist_transport.push(obs.transport);
+  SIM.hist_occupancy.push(obs.occupancy);
+  if (SIM.hist_polar.length > SIM.MAX_HIST) {
+    SIM.hist_polar.shift(); SIM.hist_transport.shift(); SIM.hist_occupancy.shift();
+  }
+
+  // Update metrics display
+  document.getElementById('mPolar').textContent = obs.polar.toFixed(3);
+  document.getElementById('mTransport').textContent = obs.transport.toFixed(3);
+  document.getElementById('mOccupancy').textContent = obs.occupancy.toFixed(3);
+
+  // Color-code metrics
+  document.getElementById('mPolar').style.color     = obs.polar > 0.5 ? '#3fb950' : '#f78166';
+  document.getElementById('mTransport').style.color = obs.transport > 0.3 ? '#3fb950' : '#f78166';
+  document.getElementById('mOccupancy').style.color = obs.occupancy > 0.05 ? '#d2a8ff' : '#8b949e';
+
+  // Sparklines
+  drawSparkline('sp1', SIM.hist_polar,     '#58a6ff');
+  drawSparkline('sp2', SIM.hist_transport, '#3fb950');
+  drawSparkline('sp3', SIM.hist_occupancy.map(v=>v*10), '#d2a8ff');
+
+  SIM.animId = requestAnimationFrame(animate);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CONTROLS
+// ─────────────────────────────────────────────────────────────────────────────
+function togglePlay() {
+  if (SIM.running) {
+    SIM.running = false;
+    cancelAnimationFrame(SIM.animId);
+    document.getElementById('btnPlay').textContent = '▶ Play';
+    setStatus('idle', 'Paused — press ▶ to resume');
+    document.getElementById('simStatus').textContent = 'paused';
+    document.getElementById('simStatus').style.color = 'var(--fg2)';
+  } else {
+    if (!SIM.x) initParticles();
+    SIM.running = true;
+    document.getElementById('btnPlay').textContent = '⏸ Pause';
+    setStatus('running', `Simulating N=${SIM.N} particles…`);
+    document.getElementById('simStatus').textContent = 'running';
+    document.getElementById('simStatus').style.color = 'var(--acc2)';
+    animate();
+  }
+}
+
+function resetSim() {
+  const wasRunning = SIM.running;
+  if (SIM.running) { SIM.running = false; cancelAnimationFrame(SIM.animId); }
+  initParticles();
+  render();
+  document.getElementById('mPolar').textContent     = '—';
+  document.getElementById('mTransport').textContent = '—';
+  document.getElementById('mOccupancy').textContent = '—';
+  setStatus('idle', 'Reset — press ▶ to start');
+  document.getElementById('btnPlay').textContent = '▶ Play';
+  document.getElementById('simStatus').textContent = 'idle';
+  document.getElementById('simStatus').style.color = 'var(--acc2)';
+  if (wasRunning) togglePlay();
+}
+
+function stepOnce() {
+  if (!SIM.x) initParticles();
+  simStep();
+  render();
+  const obs = computeObservables();
+  document.getElementById('mPolar').textContent     = obs.polar.toFixed(3);
+  document.getElementById('mTransport').textContent = obs.transport.toFixed(3);
+  document.getElementById('mOccupancy').textContent = obs.occupancy.toFixed(3);
+  SIM.hist_polar.push(obs.polar);
+  SIM.hist_transport.push(obs.transport);
+  SIM.hist_occupancy.push(obs.occupancy);
+  if (SIM.hist_polar.length > SIM.MAX_HIST) {
+    SIM.hist_polar.shift(); SIM.hist_transport.shift(); SIM.hist_occupancy.shift();
+  }
+  drawSparkline('sp1', SIM.hist_polar,     '#58a6ff');
+  drawSparkline('sp2', SIM.hist_transport, '#3fb950');
+  drawSparkline('sp3', SIM.hist_occupancy.map(v=>v*10), '#d2a8ff');
+}
+
+function setStatus(type, msg) {
+  const bar = document.getElementById('statusBar');
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+  bar.className = 'status-bar ' + type;
+  dot.className = 'status-dot' + (type === 'running' ? ' spin' : '');
+  txt.textContent = msg;
+}
+
+// Param update handler
+const PARAM_LABELS = {
+  N:'vN', J:'vJ', eta:'vEta', alpha:'vAlpha', v_max:'vVmax', R_align:'vRalign',
+  I_emit:'vIemit', sigma_rad:'vSigmaRad', kappa_T:'vKappaT',
+  sigma_chiral:'vChiral', obs_radius:'vObsR', shadow_fraction:'vShadow',
+  light_dir_deg:'vLightDir', stepsPerFrame:'vSpeed', ptSize:'vPSize',
+  arrowScale:'vArrowSc', wall_strength:'vWall', n_steps:'vNsteps'
+};
+function onParam(key, el) {
+  let val = parseFloat(el.value);
+  if (key === 'N') val = parseInt(el.value);
+  if (key === 'stepsPerFrame') val = parseInt(el.value);
+  if (key === 'n_steps') val = parseInt(el.value);
+
+  const lbl = PARAM_LABELS[key];
+  if (lbl) {
+    const suffix = key === 'light_dir_deg' ? '°' : '';
+    document.getElementById(lbl).textContent = val.toFixed(key==='N'||key==='stepsPerFrame'||key==='n_steps'?0:2) + suffix;
+  }
+
+  if (key === 'N') {
+    SIM.N = val;
+    const wasRunning = SIM.running;
+    if (SIM.running) { SIM.running = false; cancelAnimationFrame(SIM.animId); }
+    initParticles();
+    if (wasRunning) { SIM.running = true; animate(); }
+  } else if (key === 'sigma_chiral') {
+    SIM.sigma_chiral = val;
+    // Re-draw omega without full reset
+    const rng = () => Math.random();
+    const randn = () => { const u=rng()+1e-10,v=rng(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); };
+    if (SIM.omega) for (let i=0;i<SIM.N;i++) SIM.omega[i]=val*randn();
+  } else {
+    SIM[key] = val;
+  }
+}
+
+function onBC(val) {
+  SIM.boundary = val;
+  document.getElementById('wallRow').style.display = val === 'confining' ? 'flex' : 'none';
+}
+
+function onObs(val) {
+  SIM.obstacle_type = val;
+  document.getElementById('obsControls').style.display = val !== 'none' ? 'flex' : 'none';
+  document.getElementById('shadowRow').style.display = val === 'shadow' ? 'flex' : 'none';
+  if (!SIM.running) render();
+}
+
+function toggleSection(hdr) {
+  const body = hdr.nextElementSibling;
+  const collapsed = body.classList.toggle('hidden');
+  hdr.classList.toggle('collapsed', collapsed);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PYTHON BACKEND
+// ─────────────────────────────────────────────────────────────────────────────
+async function runPython() {
+  const btn = document.getElementById('btnRunPy');
+  const overlay = document.getElementById('pyOverlay');
+  btn.disabled = true;
+  overlay.classList.remove('hidden');
+  setStatus('running', 'Running Python simulation…');
+
+  const body = {
+    N: SIM.N, L: SIM.L, J: SIM.J, eta: SIM.eta, alpha: SIM.alpha,
+    v_max: SIM.v_max, R_align: SIM.R_align,
+    I_emit: SIM.I_emit, sigma_rad: SIM.sigma_rad,
+    sigma_chiral: SIM.sigma_chiral, kappa_T: SIM.kappa_T,
+    obs_radius: SIM.obs_radius, shadow_fraction: SIM.shadow_fraction,
+    obstacle_type: SIM.obstacle_type === 'none' ? 'none' : SIM.obstacle_type,
+    n_steps: parseInt(document.getElementById('sNsteps').value),
+    record_every: 4, seed: 42,
+  };
+
+  try {
+    const res = await fetch('/api/simulate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+
+    if (data.error) throw new Error(data.error);
+
+    // Display results
+    document.getElementById('pyResult').style.display = 'block';
+    document.getElementById('pyPhi').textContent  = data.time_avg_phi.toFixed(4);
+    document.getElementById('pyTime').textContent = data.elapsed + 's';
+    document.getElementById('pyLp').textContent   = data.persist_length < 9999 ? data.persist_length.toFixed(2) : '∞';
+    document.getElementById('pyOcc').textContent  = data.time_avg_occ.toFixed(4);
+
+    // Draw metrics chart
+    drawPyChart(data);
+
+    // Update JS sim with final positions from Python
+    if (data.final_pos && data.final_pos.length === SIM.N) {
+      if (!SIM.x) initParticles();
+      for (let i=0;i<SIM.N;i++){
+        SIM.x[i]     = data.final_pos[i][0];
+        SIM.y[i]     = data.final_pos[i][1];
+        SIM.theta[i] = data.final_theta[i];
+        SIM.I_local[i] = data.final_I[i];
+        SIM.v0[i]    = SIM.v_max * Math.min(1, SIM.I_local[i] / SIM.I_0);
+      }
+      render();
+    }
+
+    setStatus('idle', `Python done in ${data.elapsed}s — Φ_t=${data.time_avg_phi.toFixed(3)}`);
+  } catch(e) {
+    setStatus('error', 'Python error: ' + e.message);
+    console.error(e);
+  } finally {
+    btn.disabled = false;
+    overlay.classList.add('hidden');
+  }
+}
+
+function drawPyChart(data) {
+  const c = document.getElementById('pyChart');
+  c.width = c.parentElement.clientWidth;
+  const cx = c.getContext('2d');
+  const W = c.width, H = 80;
+  cx.fillStyle = '#21262d';
+  cx.fillRect(0, 0, W, H);
+
+  const series = [
+    { data: data.polar_orders,   color: '#58a6ff', label: 'Φ_polar' },
+    { data: data.transport_effs, color: '#3fb950', label: 'Φ_transport' },
+    { data: data.occupancies.map(v=>v*10),    color: '#d2a8ff', label: 'Occ×10' },
+  ];
+
+  for (const { data: d, color, label } of series) {
+    if (!d || d.length < 2) continue;
+    const step = (W - 2) / (d.length - 1);
+    cx.strokeStyle = color; cx.lineWidth = 1.5;
+    cx.beginPath();
+    for (let i=0;i<d.length;i++) {
+      const x = 1 + i*step;
+      const y = H - 2 - Math.max(-1,Math.min(1,d[i]+1))/2 * (H-4);
+      i===0 ? cx.moveTo(x,y) : cx.lineTo(x,y);
+    }
+    cx.stroke();
+  }
+
+  // Legend
+  let lx = 4;
+  for (const { color, label } of series) {
+    cx.fillStyle = color; cx.fillRect(lx, H-12, 8, 8);
+    cx.fillStyle='#8b949e'; cx.font='9px monospace';
+    cx.fillText(label, lx+10, H-5); lx += 70;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MOUSE DRAG — MOVE OBSTACLE
+// ─────────────────────────────────────────────────────────────────────────────
+let _dragging = false;
+canvas.addEventListener('mousedown', (e) => {
+  if (!document.getElementById('chkDragObs').checked) return;
+  if (SIM.obstacle_type === 'none') return;
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  const scale = getScale();
+  const offX = (canvas.width - SIM.L*scale)/2;
+  const offY = (canvas.height - SIM.L*scale)/2;
+  const wx = (mx - offX) / scale;
+  const wy = (canvas.height - my - offY) / scale;
+  const dx = wx - SIM.ox, dy = wy - SIM.oy;
+  if (dx*dx+dy*dy < SIM.obs_radius*SIM.obs_radius*4) _dragging = true;
+});
+canvas.addEventListener('mousemove', (e) => {
+  if (!_dragging) return;
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  const scale = getScale();
+  const offX = (canvas.width - SIM.L*scale)/2;
+  const offY = (canvas.height - SIM.L*scale)/2;
+  SIM.ox = Math.max(0, Math.min(SIM.L, (mx - offX)/scale));
+  SIM.oy = Math.max(0, Math.min(SIM.L, (canvas.height - my - offY)/scale));
+  if (!SIM.running) render();
+});
+canvas.addEventListener('mouseup',    () => { _dragging = false; });
+canvas.addEventListener('mouseleave', () => { _dragging = false; });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FULLSCREEN
+// ─────────────────────────────────────────────────────────────────────────────
+function toggleFullscreen() {
+  const wrap = document.getElementById('canvasWrap');
+  if (!document.fullscreenElement) {
+    wrap.requestFullscreen();
+  } else {
+    document.exitFullscreen();
+  }
+}
+document.addEventListener('fullscreenchange', () => {
+  setTimeout(() => { resizeCanvas(); if (!SIM.running) render(); }, 100);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// KEYBOARD SHORTCUTS
+// ─────────────────────────────────────────────────────────────────────────────
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  if (e.key === ' ') { e.preventDefault(); togglePlay(); }
+  if (e.key === 'r' || e.key === 'R') resetSim();
+  if (e.key === 'ArrowRight') stepOnce();
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  resizeCanvas();
+  initParticles();
+  render();
+  setStatus('idle', 'Ready — press ▶ Play or Space to start | R to reset | → to step');
+  // Resize observer
+  const ro = new ResizeObserver(() => { resizeCanvas(); if (!SIM.running) render(); });
+  ro.observe(document.getElementById('canvasWrap'));
+});
+window.addEventListener('resize', () => { resizeCanvas(); if (!SIM.running) render(); });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PRESET LOADER
+// ─────────────────────────────────────────────────────────────────────────────
+function setSlider(id, val) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.value = val;
+  el.dispatchEvent(new Event('input'));
+}
+
+function loadPreset(name) {
+  const wasRunning = SIM.running;
+  if (SIM.running) { SIM.running = false; cancelAnimationFrame(SIM.animId); }
+
+  const presets = {
+    demo: {
+      N:200, J:1.0, eta:0.5, alpha:0.8, v_max:1.0, R_align:2.0,
+      I_emit:0.3, sigma_rad:1.5, kappa_T:0.0, sigma_chiral:0.0,
+      obs_type:'none', bc:'periodic'
+    },
+    ordered: {
+      N:300, J:3.5, eta:0.3, alpha:0.5, v_max:1.0, R_align:2.5,
+      I_emit:0.2, sigma_rad:1.5, kappa_T:0.0, sigma_chiral:0.0,
+      obs_type:'none', bc:'periodic'
+    },
+    shadow: {
+      N:250, J:2.0, eta:0.5, alpha:0.8, v_max:1.0, R_align:2.0,
+      I_emit:0.4, sigma_rad:1.5, kappa_T:0.0, sigma_chiral:0.0,
+      obs_type:'shadow', bc:'periodic'
+    },
+    chiral: {
+      N:150, J:0.0, eta:0.15, alpha:0.0, v_max:1.0, R_align:2.0,
+      I_emit:0.0, sigma_rad:1.5, kappa_T:0.0, sigma_chiral:0.2,
+      obs_type:'none', bc:'periodic'
+    },
+    disorder: {
+      N:300, J:0.2, eta:4.0, alpha:0.1, v_max:1.0, R_align:2.0,
+      I_emit:0.1, sigma_rad:1.5, kappa_T:0.0, sigma_chiral:0.0,
+      obs_type:'none', bc:'periodic'
+    },
+    gradient: {
+      N:200, J:1.5, eta:0.4, alpha:1.2, v_max:1.0, R_align:2.0,
+      I_emit:0.2, sigma_rad:1.5, kappa_T:0.0, sigma_chiral:0.0,
+      obs_type:'gradient', bc:'periodic'
+    },
+  };
+
+  const p = presets[name];
+  if (!p) return;
+
+  setSlider('sN',     p.N);
+  setSlider('sJ',     p.J);
+  setSlider('sEta',   p.eta);
+  setSlider('sAlpha', p.alpha);
+  setSlider('sVmax',  p.v_max);
+  setSlider('sRalign',p.R_align);
+  setSlider('sIemit', p.I_emit);
+  setSlider('sSigmaRad', p.sigma_rad);
+  setSlider('sKappaT',   p.kappa_T);
+  setSlider('sChiral',   p.sigma_chiral);
+
+  // Obstacle & BC selects
+  document.getElementById('selObs').value = p.obs_type;
+  onObs(p.obs_type);
+  document.getElementById('selBC').value = p.bc;
+  onBC(p.bc);
+
+  SIM.N = p.N;
+  initParticles();
+  render();
+  setStatus('idle', `Loaded preset: ${name} — press ▶ Play`);
+}
+
+function scrollToSim() {
+  document.getElementById('sim').scrollIntoView({ behavior:'smooth' });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GRAY-SCOTT PDE ENGINE
+// ─────────────────────────────────────────────────────────────────────────────
+const GS = {
+  W: 200, H: 200,
+  u: null, v: null, u2: null, v2: null,
+  running: false, animId: null, frame: 0,
+};
+
+function gsInit() {
+  const { W, H } = GS;
+  GS.u  = new Float32Array(W * H).fill(1.0);
+  GS.v  = new Float32Array(W * H).fill(0.0);
+  GS.u2 = new Float32Array(W * H);
+  GS.v2 = new Float32Array(W * H);
+  GS.frame = 0;
+
+  // Seed random patches of v
+  const rng = () => Math.random();
+  for (let n = 0; n < 20; n++) {
+    const cx = Math.floor(rng() * W), cy = Math.floor(rng() * H);
+    const r = 4 + Math.floor(rng() * 6);
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        if (dx*dx + dy*dy > r*r) continue;
+        const ix = ((cx+dx) + W) % W;
+        const iy = ((cy+dy) + H) % H;
+        const idx = iy * W + ix;
+        GS.u[idx] = 0.5 + (rng()-0.5)*0.1;
+        GS.v[idx] = 0.25 + (rng()-0.5)*0.1;
+      }
+    }
+  }
+}
+
+function gsStep(steps) {
+  const { W, H, u, v, u2, v2 } = GS;
+  const f  = parseFloat(document.getElementById('gsF').value);
+  const k  = parseFloat(document.getElementById('gsK').value);
+  const Du = parseFloat(document.getElementById('gsDu').value);
+  const Dv = parseFloat(document.getElementById('gsDv').value);
+  const dt = 1.0;
+
+  for (let s = 0; s < steps; s++) {
+    for (let y = 0; y < H; y++) {
+      const yn = ((y - 1) + H) % H, yp = (y + 1) % H;
+      for (let x = 0; x < W; x++) {
+        const xn = ((x - 1) + W) % W, xp = (x + 1) % W;
+        const idx = y * W + x;
+        const ui = u[idx], vi = v[idx];
+        // 5-point Laplacian
+        const lapU = u[yn*W+x] + u[yp*W+x] + u[y*W+xn] + u[y*W+xp] - 4*ui;
+        const lapV = v[yn*W+x] + v[yp*W+x] + v[y*W+xn] + v[y*W+xp] - 4*vi;
+        const uvv  = ui * vi * vi;
+        u2[idx] = ui + dt * (Du * lapU - uvv + f * (1 - ui));
+        v2[idx] = vi + dt * (Dv * lapV + uvv - (f + k) * vi);
+        u2[idx] = Math.max(0, Math.min(1, u2[idx]));
+        v2[idx] = Math.max(0, Math.min(1, v2[idx]));
+      }
+    }
+    u.set(u2); v.set(v2);
+  }
+}
+
+function gsRender() {
+  const canvas = document.getElementById('gsCanvas');
+  if (!canvas) return;
+  const { W, H, u } = GS;
+  canvas.width  = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  const img = ctx.createImageData(W, H);
+  const d   = img.data;
+  for (let i = 0; i < W * H; i++) {
+    const t = 1.0 - u[i]; // invert so v-rich = bright
+    // Plasma-like: dark blue → orange → yellow
+    const r = Math.round(Math.min(1, t * 2.5) * 240);
+    const g = Math.round(Math.max(0, t * 2 - 0.4) * 200);
+    const b = Math.round(Math.max(0, 1 - t * 2) * 255);
+    d[i*4+0] = r; d[i*4+1] = g; d[i*4+2] = b; d[i*4+3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+function gsAnimate() {
+  if (!GS.running) return;
+  gsStep(10);
+  gsRender();
+  GS.frame += 10;
+  document.getElementById('gsInfo').textContent =
+    `Step ${GS.frame} | f=${parseFloat(document.getElementById('gsF').value).toFixed(3)} k=${parseFloat(document.getElementById('gsK').value).toFixed(3)}`;
+  GS.animId = requestAnimationFrame(gsAnimate);
+}
+
+function gsToggle() {
+  if (GS.running) {
+    GS.running = false;
+    cancelAnimationFrame(GS.animId);
+    document.getElementById('gsBtnPlay').textContent = '▶ Play';
+  } else {
+    if (!GS.u) gsInit();
+    GS.running = true;
+    document.getElementById('gsBtnPlay').textContent = '⏸ Pause';
+    gsAnimate();
+  }
+}
+
+function gsRestart() {
+  const wasRunning = GS.running;
+  if (GS.running) { GS.running = false; cancelAnimationFrame(GS.animId); }
+  gsInit();
+  gsRender();
+  if (wasRunning) { GS.running = true; gsAnimate(); }
+}
+
+function gsLoadPreset(name) {
+  const presets = {
+    spots:   { f:0.037, k:0.060, Du:0.16, Dv:0.08 },
+    stripes: { f:0.060, k:0.062, Du:0.16, Dv:0.08 },
+    maze:    { f:0.029, k:0.057, Du:0.16, Dv:0.08 },
+    holes:   { f:0.039, k:0.058, Du:0.16, Dv:0.08 },
+    waves:   { f:0.014, k:0.047, Du:0.16, Dv:0.08 },
+  };
+  const p = presets[name];
+  if (!p) return;
+  document.getElementById('gsF').value  = p.f;  document.getElementById('gsF_val').textContent  = p.f.toFixed(3);
+  document.getElementById('gsK').value  = p.k;  document.getElementById('gsK_val').textContent  = p.k.toFixed(3);
+  document.getElementById('gsDu').value = p.Du; document.getElementById('gsDu_val').textContent = p.Du.toFixed(2);
+  document.getElementById('gsDv').value = p.Dv; document.getElementById('gsDv_val').textContent = p.Dv.toFixed(3);
+  gsRestart();
+  // Auto-start
+  if (!GS.running) gsToggle();
+}
+
+// Init Gray-Scott on load
+window.addEventListener('load', () => {
+  gsInit();
+  gsRender();
+});
+</script>
+</body>
+</html>
