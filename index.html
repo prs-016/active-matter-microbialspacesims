@@ -1235,7 +1235,7 @@ select:focus { border-color: var(--acc1); }
         <div class="plot-card-title">Demo — Final Swarm State</div>
         <span class="plot-card-badge badge-demo">Demo</span>
       </div>
-      <img class="plot-img" id="imgSnapshot" src="/plots/demo_snapshot.png" alt="Demo Snapshot" onerror="this.style.display='none'">
+      <img class="plot-img" id="imgSnapshot" src="demo_snapshot.png" alt="Demo Snapshot" onerror="this.style.display='none'">
       <div class="plot-card-footer" style="display:flex;justify-content:space-between;align-items:flex-end">
         <span style="max-width:200px">Color = I_local · Arrows = orientation &amp; speed</span>
         <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
@@ -1250,7 +1250,7 @@ select:focus { border-color: var(--acc1); }
         <span class="plot-card-badge badge-demo">Demo</span>
       </div>
       <div id="tsSpinner" style="display:none;text-align:center;padding:20px 0;color:var(--fg2);font-size:0.85rem">⏳ Running Python simulation… (~5–15s)</div>
-      <img class="plot-img" id="imgTimeseries" src="/plots/demo_timeseries.png" alt="Demo Timeseries" onerror="this.style.display='none'">
+      <img class="plot-img" id="imgTimeseries" src="demo_timeseries.png" alt="Demo Timeseries" onerror="this.style.display='none'">
       <div class="plot-card-footer" style="display:flex;justify-content:space-between;align-items:flex-end">
         <span style="max-width:200px">Φ_polar, Φ_transport, Occupancy · Dashed = transient</span>
         <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
@@ -1264,7 +1264,7 @@ select:focus { border-color: var(--acc1); }
         <div class="plot-card-title">Task 1 — Phase Diagram (η, J)</div>
         <span class="plot-card-badge badge-task1">Task 1</span>
       </div>
-      <img class="plot-img" id="imgPhase" src="/plots/phase_diagram.png" alt="Phase Diagram" style="width:100%;display:block" onerror="this.style.display='none'">
+      <img class="plot-img" id="imgPhase" src="phase_diagram.png" alt="Phase Diagram" style="width:100%;display:block" onerror="this.style.display='none'">
       <div class="plot-card-footer" style="display:flex;justify-content:space-between;align-items:flex-end">
         <span style="max-width:200px">Streaming phase vs disordered gas</span>
         <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
@@ -1278,7 +1278,7 @@ select:focus { border-color: var(--acc1); }
         <div class="plot-card-title">Task 2 — Shadow Obstacle Navigation</div>
         <span class="plot-card-badge badge-task2">Task 2</span>
       </div>
-      <img class="plot-img" id="imgShadow" src="/plots/obstacle_comparison.png" alt="Obstacle Comparison" style="width:100%;display:block" onerror="this.style.display='none'">
+      <img class="plot-img" id="imgShadow" src="obstacle_comparison.png" alt="Obstacle Comparison" style="width:100%;display:block" onerror="this.style.display='none'">
       <div class="plot-card-footer" style="display:flex;justify-content:space-between;align-items:flex-end">
         <span style="max-width:200px">Collective rescue vs J=0</span>
         <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
@@ -1292,7 +1292,7 @@ select:focus { border-color: var(--acc1); }
         <div class="plot-card-title">Chirality — Circle Swimmer (Paper 3)</div>
         <span class="plot-card-badge badge-extra">Bonus</span>
       </div>
-      <img class="plot-img" id="imgChirality" src="/plots/chirality_demo.png" alt="Chirality Demo" style="width:100%;display:block" onerror="this.style.display='none'">
+      <img class="plot-img" id="imgChirality" src="chirality_demo.png" alt="Chirality Demo" style="width:100%;display:block" onerror="this.style.display='none'">
       <div class="plot-card-footer" style="display:flex;justify-content:space-between;align-items:flex-end">
         <span style="max-width:200px">Circular/epitrochoidal paths</span>
         <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
@@ -2287,7 +2287,8 @@ async function runPython() {
 
     setStatus('idle', `Python done in ${data.elapsed}s — Φ_t=${data.time_avg_phi.toFixed(3)}`);
   } catch(e) {
-    setStatus('error', 'Python error: ' + e.message);
+    setStatus('error', 'Python offline: running in static sandbox mode!');
+    alert("🌌 Active-Matter Sandbox Mode:\nThe heavy Python simulation backend is offline (standard for static GitHub Pages hosting).\n\nDon't worry! The ultra-smooth interactive 2D and 3D real-time simulation engines are fully active! Use the Play and Preset controls to run real-time biophysics swarms directly in your browser!");
     console.error(e);
   } finally {
     btn.disabled = false;
@@ -2551,13 +2552,13 @@ async function runPyAndRefreshCard() {
 
     // Refresh the timeseries image (backend regenerated it)
     const t = Date.now();
-    img.src = '/plots/demo_timeseries.png?t=' + t;
+    img.src = 'demo_timeseries.png?t=' + t;
     img.style.opacity = '1';
     img.style.display = 'block';
 
     // Also refresh snapshot image
     const snap = document.getElementById('imgSnapshot');
-    if (snap) { snap.src = '/plots/demo_snapshot.png?t=' + t; snap.style.display = 'block'; }
+    if (snap) { snap.src = 'demo_snapshot.png?t=' + t; snap.style.display = 'block'; }
 
     // Feed Python data into the real-time chart
     if (data.polar_orders) {
@@ -2569,7 +2570,8 @@ async function runPyAndRefreshCard() {
 
     btn.textContent = '✅ Done — Re-run';
   } catch (err) {
-    btn.textContent = '❌ Error — Retry';
+    btn.textContent = '❌ Backend Offline';
+    alert("📡 Python Simulation Offline:\nThe heavy scientific analysis backend is not running on this static server. All static pre-computed plots (Phase Diagram, Obstacle Navigation, Chirality loops) are fully loaded and enlargable above!\n\nAdditionally, the real-time interactive 2D & 3D WebGL swarms are fully active directly below!");
     console.error('runPyAndRefreshCard:', err);
   } finally {
     btn.disabled = false;
