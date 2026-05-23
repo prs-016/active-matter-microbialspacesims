@@ -1,0 +1,79 @@
+✅  Imports loaded.
+✅  Parameters loaded.
+    N=300, L=30.0, ρ=N/L²=0.333
+    v_max=1.0, η=0.5, J=1.0, α=0.8
+    Dr ≈ 0.1250 t⁻¹  →  Persistence length L_p ≈ 8.00 L
+    Péclet number Pe ≈ 1.15
+    dt·(J+α) = 0.090  (should be << 1 for stability)
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║               SCIENTIFIC SUMMARY & BIOLOGICAL INTERPRETATION                ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+WHAT THIS MODEL CAPTURES (grounded in uploaded papers):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. PHOTOPHORETIC PROPULSION (Papers 1 & 4):
+   v₀ ∝ F_ph/γ_drag ∝ I_local  [Koss 2022, Eq. 1; Krauss 2006, Eq. 1]
+   In shadow: v₀ → 0 (stall). In light: v₀ = v_max.
+   Physical scale: for 5 µm Pt-JP at 100 mW laser, v₀ ~ 10–100 µm/s.
+
+2. ROTATIONAL DIFFUSION (Paper 2):
+   D_r = η²/2 = k_BT/(8πη_fluid·a³)  [Lisin 2021, Eq. 1]
+   Persistence length: L_p = v₀/D_r  [Lisin 2021, Eq. 7]
+   Physical scale: D_r ~ 0.01–10 s⁻¹ for 1–5 µm particles in water.
+
+3. CIRCLE SWIMMING (Paper 3):
+   Body-fixed torque from asymmetric Pt-cap creates intrinsic spin.
+   Trajectory type depends on ω_self/ω_circling ratio:
+     ω_self/ω = 1 → circular;   n → epitrochoidal  [Nosenko 2020, Sec. IV]
+
+4. COLLECTIVE ALIGNMENT (Vicsek-type):
+   J couples particle orientations within radius R_align.
+   Physical mechanism: combined thermal radiation + thermoosmotic coupling.
+   Phase boundary: η_c ∝ √(J·ρ·R²)  [Vicsek 1995, extended in Paper 2]
+
+5. SHADOWING & COLLECTIVE RESCUE:
+   Geometric shadow stalls isolated particles (Paper 1).
+   Swarm radiation from bright neighbours rescues shadowed particles.
+   This is a NEW EMERGENT BEHAVIOUR not present in single-particle physics.
+
+HONEST LIMITATIONS:
+━━━━━━━━━━━━━━━━━━
+✗ Dry active matter: no hydrodynamic interactions (Stokes flow neglected).
+  Real impact: ~20–40% error in alignment coupling magnitude.
+✗ Overdamped only: inertial delay number β = ν/ω >> 1 assumed.
+  Valid for β >> 1 (colloidal particles in liquid). Not valid for plasma JP.
+  Plasma JPs have β ~ 0.1–10 → inertial effects matter (Paper 2, Paper 3)!
+✗ Geometric optics: no wave optics, diffraction, or scattering in shadow.
+✗ No particle-size polydispersity: real JP batches have ~5–10% size variation.
+✗ 2D only: real experiments are quasi-2D with out-of-plane fluctuations.
+✗ Phenomenological J: true physical coupling involves both radiation
+  AND thermoosmotic flows — our J merges these into one constant.
+
+MAPPING TO REAL BIOLOGY:
+━━━━━━━━━━━━━━━━━━━━━━━━
+• J (alignment)  ~ quorum-sensing coupling in bacteria (Pseudomonas, E. coli)
+• α (phototaxis) ~ chemotaxis gradient response (camp signalling)
+• Shadow          ~ physical barrier in biofilm formation / drug delivery
+• Swarm delivery  ~ targeted nanoparticle delivery past biological barriers
+• Phase diagram   ~ order–disorder transition in bacterial collective motion
+  (Vicsek universality class, confirmed in Bacillus subtilis suspensions)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ Simulation module loaded
+🚀  PJPS Dashboard running at http://localhost:7860
+ * Serving Flask app 'app'
+ * Debug mode: off
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:7860
+ * Running on http://100.80.113.157:7860
+[33mPress CTRL+C to quit[0m
+127.0.0.1 - - [23/May/2026 14:12:24] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [23/May/2026 14:12:24] "[36mGET /plots/demo_snapshot.png HTTP/1.1[0m" 304 -
+127.0.0.1 - - [23/May/2026 14:12:24] "[36mGET /plots/demo_timeseries.png HTTP/1.1[0m" 304 -
+127.0.0.1 - - [23/May/2026 14:12:24] "[36mGET /plots/phase_diagram.png HTTP/1.1[0m" 304 -
+127.0.0.1 - - [23/May/2026 14:12:24] "[36mGET /plots/obstacle_comparison.png HTTP/1.1[0m" 304 -
+127.0.0.1 - - [23/May/2026 14:12:24] "[36mGET /plots/chirality_demo.png HTTP/1.1[0m" 304 -
+127.0.0.1 - - [23/May/2026 14:12:24] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -

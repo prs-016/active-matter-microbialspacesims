@@ -96,6 +96,33 @@ def api_simulate():
             record_every=int(p.get('record_every', 4)),
         )
 
+        # Generate and save the final state and timeseries plots using Matplotlib
+        try:
+            import matplotlib
+            matplotlib.use('Agg')
+            import matplotlib.pyplot as plt
+
+            dir_path = os.path.dirname(os.path.abspath(__file__))
+
+            # Plot and save final state
+            fig1 = _sim_globals['plot_snapshot'](
+                result,
+                frame_idx=-1,
+                title=f"PJPS — Final State (J={float(p.get('J', 1.0)):.1f}, \u03b7={float(p.get('eta', 0.5)):.1f}, \u03b1={float(p.get('alpha', 0.8)):.1f})"
+            )
+            fig1.savefig(os.path.join(dir_path, 'demo_snapshot.png'), dpi=150, bbox_inches='tight')
+            plt.close(fig1)
+
+            # Plot and save timeseries
+            fig2 = _sim_globals['plot_time_series'](
+                result,
+                title="PJPS Demo — Time Series"
+            )
+            fig2.savefig(os.path.join(dir_path, 'demo_timeseries.png'), dpi=150, bbox_inches='tight')
+            plt.close(fig2)
+        except Exception as plot_err:
+            print(f"⚠️ Failed to generate plots in API: {plot_err}")
+
         # Serialize key results (not the full arrays to keep response small)
         n_fr = len(result['polar_orders'])
         step_size = max(1, n_fr // 80)  # max 80 frames for response

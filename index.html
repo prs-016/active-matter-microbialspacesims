@@ -196,17 +196,17 @@ code { font-family: var(--font-mono); font-size: 0.85em; background: var(--bg3);
 
 /* ── Mini sparklines ────────────────────────────── */
 .sparklines {
-  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  display: block;
   border-top: 1px solid var(--border);
   flex-shrink: 0;
+  padding: 10px;
 }
-.spark-cell {
-  padding: 6px 10px;
-  border-right: 1px solid var(--border);
+.rt-chart-title {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--fg2);
+  margin-bottom: 6px;
 }
-.spark-cell:last-child { border-right: none; }
-.spark-label { font-size: 0.65rem; color: var(--fg3); margin-bottom: 3px; }
-.spark-canvas { width: 100%; height: 40px; display: block; }
 
 /* ── Control sections ───────────────────────────── */
 .ctrl-section {
@@ -398,6 +398,27 @@ select:focus { border-color: var(--acc1); }
 .site-footer {
   padding: 20px 24px;
   border-top: 1px solid var(--border);
+  display: flex; justify-content: space-between;
+  font-size: 0.72rem; color: var(--fg3);
+}
+
+/* ── Fullscreen Image Modal ─────────────────────── */
+.img-modal {
+  display: none; position: fixed; z-index: 9999;
+  left: 0; top: 0; width: 100%; height: 100%;
+  background-color: rgba(0,0,0,0.85);
+  backdrop-filter: blur(4px);
+  justify-content: center; align-items: center;
+}
+.img-modal-content {
+  max-width: 90vw; max-height: 90vh;
+  border-radius: var(--radius); box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+}
+.img-modal-close {
+  position: absolute; top: 20px; right: 30px;
+  color: #fff; font-size: 35px; font-weight: bold; cursor: pointer;
+}
+.img-modal-close:hover { color: var(--acc1); }
   display: flex; align-items: center; justify-content: space-between;
   font-size: 0.75rem; color: var(--fg3);
 }
@@ -510,18 +531,8 @@ select:focus { border-color: var(--acc1); }
     </div>
 
     <div class="sparklines">
-      <div class="spark-cell">
-        <div class="spark-label">Polar order history</div>
-        <canvas class="spark-canvas" id="sp1"></canvas>
-      </div>
-      <div class="spark-cell">
-        <div class="spark-label">Transport efficiency history</div>
-        <canvas class="spark-canvas" id="sp2"></canvas>
-      </div>
-      <div class="spark-cell">
-        <div class="spark-label">Target occupancy history</div>
-        <canvas class="spark-canvas" id="sp3"></canvas>
-      </div>
+      <div class="rt-chart-title">📈 Real-Time PJPS Swarm Metrics</div>
+      <canvas id="rtChart" height="110" style="width:100%;background:rgba(13,17,23,0.6);border-radius:4px;display:block"></canvas>
     </div>
   </div>
 
@@ -769,7 +780,7 @@ select:focus { border-color: var(--acc1); }
               <div id="pyOcc" style="color:var(--acc5);font-weight:700;font-size:1.1rem;font-family:var(--font-mono)">—</div>
             </div>
           </div>
-          <canvas id="pyChart" height="80" style="width:100%;margin-top:10px;border-radius:6px;background:var(--bg4)"></canvas>
+          <canvas id="pyChart" height="100" style="width:100%;margin-top:10px;border-radius:6px;background:var(--bg4)"></canvas>
         </div>
       </div>
     </div>
@@ -841,54 +852,70 @@ select:focus { border-color: var(--acc1); }
         <div class="plot-card-title">Demo — Final Swarm State</div>
         <span class="plot-card-badge badge-demo">Demo</span>
       </div>
-      <img class="plot-img" src="/plots/demo_snapshot.png" alt="Demo Snapshot" onerror="this.style.display='none'">
-      <div class="plot-card-footer" style="display:flex;justify-content:space-between;align-items:center">
-        <span>Color = I_local · Arrows = orientation &amp; speed</span>
-        <button class="btn btn-ghost" style="font-size:0.68rem;padding:3px 8px" onclick="loadPreset('demo');scrollToSim()">▶ Load &amp; Run</button>
+      <img class="plot-img" id="imgSnapshot" src="/plots/demo_snapshot.png" alt="Demo Snapshot" onerror="this.style.display='none'">
+      <div class="plot-card-footer" style="display:flex;justify-content:space-between;align-items:flex-end">
+        <span style="max-width:200px">Color = I_local · Arrows = orientation &amp; speed</span>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+          <button class="btn btn-ghost" style="font-size:0.68rem;padding:3px 8px;width:100%" onclick="loadPreset('demo');scrollToSim()">▶ Live Sim</button>
+          <button class="btn btn-ghost" style="font-size:0.68rem;padding:3px 8px;width:100%" onclick="openModal('imgSnapshot')">🔍 Enlarge</button>
+        </div>
       </div>
     </div>
-    <div class="plot-card">
+    <div class="plot-card" id="cardTimeseries">
       <div class="plot-card-hdr">
         <div class="plot-card-title">Demo — Time Series Metrics</div>
         <span class="plot-card-badge badge-demo">Demo</span>
       </div>
-      <img class="plot-img" src="/plots/demo_timeseries.png" alt="Demo Timeseries" onerror="this.style.display='none'">
-      <div class="plot-card-footer" style="display:flex;justify-content:space-between;align-items:center">
-        <span>Φ_polar, Φ_transport, Occupancy · Dashed = transient</span>
-        <button class="btn btn-ghost" style="font-size:0.68rem;padding:3px 8px" onclick="loadPreset('demo');scrollToSim()">▶ Load &amp; Run</button>
+      <div id="tsSpinner" style="display:none;text-align:center;padding:20px 0;color:var(--fg2);font-size:0.85rem">⏳ Running Python simulation… (~5–15s)</div>
+      <img class="plot-img" id="imgTimeseries" src="/plots/demo_timeseries.png" alt="Demo Timeseries" onerror="this.style.display='none'">
+      <div class="plot-card-footer" style="display:flex;justify-content:space-between;align-items:flex-end">
+        <span style="max-width:200px">Φ_polar, Φ_transport, Occupancy · Dashed = transient</span>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+          <button class="btn btn-ghost" id="btnTsRun" style="font-size:0.68rem;padding:3px 8px;width:100%" onclick="runPyAndRefreshCard()">▶ Generate Plot</button>
+          <button class="btn btn-ghost" style="font-size:0.68rem;padding:3px 8px;width:100%" onclick="openModal('imgTimeseries')">🔍 Enlarge</button>
+        </div>
       </div>
     </div>
-    <div class="plot-card">
+    <div class="plot-card" id="cardPhase">
       <div class="plot-card-hdr">
         <div class="plot-card-title">Task 1 — Phase Diagram (η, J)</div>
         <span class="plot-card-badge badge-task1">Task 1</span>
       </div>
-      <img class="plot-img" src="/plots/phase_diagram.png" alt="Phase Diagram" onerror="this.style.display='none'">
-      <div class="plot-card-footer" style="display:flex;justify-content:space-between;align-items:center">
-        <span>Streaming phase vs disordered gas · Φ=0.5 boundary</span>
-        <button class="btn btn-ghost" style="font-size:0.68rem;padding:3px 8px" onclick="loadPreset('ordered');scrollToSim()">▶ Ordered Swarm</button>
+      <img class="plot-img" id="imgPhase" src="/plots/phase_diagram.png" alt="Phase Diagram" style="width:100%;display:block" onerror="this.style.display='none'">
+      <div class="plot-card-footer" style="display:flex;justify-content:space-between;align-items:flex-end">
+        <span style="max-width:200px">Streaming phase vs disordered gas</span>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+          <button class="btn btn-ghost" style="font-size:0.68rem;padding:3px 8px;width:100%" onclick="loadPreset('ordered');scrollToSim()">▶ Live Sim</button>
+          <button class="btn btn-ghost" style="font-size:0.68rem;padding:3px 8px;width:100%" onclick="openModal('imgPhase')">📊 View Diagram</button>
+        </div>
       </div>
     </div>
-    <div class="plot-card">
+    <div class="plot-card" id="cardShadow">
       <div class="plot-card-hdr">
         <div class="plot-card-title">Task 2 — Shadow Obstacle Navigation</div>
         <span class="plot-card-badge badge-task2">Task 2</span>
       </div>
-      <img class="plot-img" src="/plots/obstacle_comparison.png" alt="Obstacle Comparison" onerror="this.style.display='none'">
-      <div class="plot-card-footer" style="display:flex;justify-content:space-between;align-items:center">
-        <span>Collective rescue: swarm (J&gt;0) outperforms J=0 past shadow</span>
-        <button class="btn btn-ghost" style="font-size:0.68rem;padding:3px 8px" onclick="loadPreset('shadow');scrollToSim()">▶ Shadow Nav</button>
+      <img class="plot-img" id="imgShadow" src="/plots/obstacle_comparison.png" alt="Obstacle Comparison" style="width:100%;display:block" onerror="this.style.display='none'">
+      <div class="plot-card-footer" style="display:flex;justify-content:space-between;align-items:flex-end">
+        <span style="max-width:200px">Collective rescue vs J=0</span>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+          <button class="btn btn-ghost" style="font-size:0.68rem;padding:3px 8px;width:100%" onclick="loadPreset('shadow');scrollToSim()">▶ Live Sim</button>
+          <button class="btn btn-ghost" style="font-size:0.68rem;padding:3px 8px;width:100%" onclick="openModal('imgShadow')">📊 View Plot</button>
+        </div>
       </div>
     </div>
-    <div class="plot-card">
+    <div class="plot-card" id="cardChirality">
       <div class="plot-card-hdr">
-        <div class="plot-card-title">Chirality — Circle Swimmer Trajectories (Paper 3)</div>
+        <div class="plot-card-title">Chirality — Circle Swimmer (Paper 3)</div>
         <span class="plot-card-badge badge-extra">Bonus</span>
       </div>
-      <img class="plot-img" src="/plots/chirality_demo.png" alt="Chirality Demo" onerror="this.style.display='none'">
-      <div class="plot-card-footer" style="display:flex;justify-content:space-between;align-items:center">
-        <span>Nosenko 2020: circular/epitrochoidal paths from body-fixed torque</span>
-        <button class="btn btn-ghost" style="font-size:0.68rem;padding:3px 8px" onclick="loadPreset('chiral');scrollToSim()">▶ Chirality</button>
+      <img class="plot-img" id="imgChirality" src="/plots/chirality_demo.png" alt="Chirality Demo" style="width:100%;display:block" onerror="this.style.display='none'">
+      <div class="plot-card-footer" style="display:flex;justify-content:space-between;align-items:flex-end">
+        <span style="max-width:200px">Circular/epitrochoidal paths</span>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+          <button class="btn btn-ghost" style="font-size:0.68rem;padding:3px 8px;width:100%" onclick="loadPreset('chiral');scrollToSim()">▶ Live Sim</button>
+          <button class="btn btn-ghost" style="font-size:0.68rem;padding:3px 8px;width:100%" onclick="openModal('imgChirality')">📊 View Plot</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1011,6 +1038,12 @@ select:focus { border-color: var(--acc1); }
   </div>
 </section>
 
+<!-- ══ IMAGE MODAL ═══════════════════════════════════════════════════════════ -->
+<div id="imgModal" class="img-modal" onclick="closeModal()">
+  <span class="img-modal-close" onclick="closeModal()">&times;</span>
+  <img class="img-modal-content" id="imgModalEl">
+</div>
+
 <!-- ══ FOOTER ════════════════════════════════════════════════════════════════ -->
 <footer class="site-footer">
   <span>PJPS · UCSD Vibe Coding Active Matter Hackathon 2026</span>
@@ -1127,6 +1160,59 @@ function initParticles() {
   SIM.hist_polar = []; SIM.hist_transport = []; SIM.hist_occupancy = [];
   SIM.frameCount = 0;
   SIM.ox = SIM.L * 0.5; SIM.oy = SIM.L * 0.5;
+
+  // Pre-calculate initial I_local and v0
+  const I_ext = new Float64Array(N).fill(SIM.I_0);
+  const obsType = SIM.obstacle_type;
+  const obsR = SIM.obs_radius;
+  const ldx = Math.cos(SIM.light_dir_deg * Math.PI / 180);
+  const ldy = Math.sin(SIM.light_dir_deg * Math.PI / 180);
+  const ox = SIM.ox, oy = SIM.oy;
+
+  if (obsType === 'shadow') {
+    for (let i = 0; i < N; i++) {
+      if (inShadow(SIM.x[i], SIM.y[i], ox, oy, obsR, ldx, ldy)) {
+        I_ext[i] *= SIM.shadow_fraction;
+      }
+    }
+  } else if (obsType === 'gradient') {
+    for (let i = 0; i < N; i++) {
+      I_ext[i] = SIM.I_0 * (1.0 + 0.5 * SIM.x[i] / SIM.L);
+    }
+  }
+
+  const cosT = new Float64Array(N);
+  const sinT = new Float64Array(N);
+  for (let i = 0; i < N; i++) {
+    cosT[i] = Math.cos(SIM.theta[i]);
+    sinT[i] = Math.sin(SIM.theta[i]);
+  }
+
+  for (let i = 0; i < N; i++) {
+    let I_rad = 0;
+    for (let j = 0; j < N; j++) {
+      if (j === i) continue;
+      let dx, dy;
+      if (SIM.boundary === 'periodic') {
+        dx = minImg(SIM.x[j] - SIM.x[i], SIM.L);
+        dy = minImg(SIM.y[j] - SIM.y[i], SIM.L);
+      } else {
+        dx = SIM.x[j] - SIM.x[i];
+        dy = SIM.y[j] - SIM.y[i];
+      }
+      const d2 = dx*dx + dy*dy;
+      const d  = Math.sqrt(d2);
+
+      if (d < SIM.R_rad && d > 0) {
+        const ejiX = -dx/d, ejiY = -dy/d;
+        const dotCap = cosT[j]*ejiX + sinT[j]*ejiY;
+        const capFactor = Math.max(0, dotCap);
+        I_rad += SIM.I_emit * Math.exp(-d2 / (SIM.sigma_rad*SIM.sigma_rad)) * capFactor;
+      }
+    }
+    SIM.I_local[i] = I_ext[i] + I_rad;
+    SIM.v0[i] = SIM.v_max * Math.min(1, SIM.I_local[i] / SIM.I_0);
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1467,7 +1553,7 @@ function render() {
   const showArrows = document.getElementById('chkArrows').checked;
   const colorByI   = document.getElementById('chkColorI').checked;
   const ptR        = SIM.ptSize;
-  const arrowSc    = SIM.arrowScale * scale * 0.055;
+  const arrowSc    = SIM.arrowScale * scale * 1.35; // Matches Matplotlib quiver scale (L * 0.045 = 1.35)
   let maxI = SIM.I_0 * 1.2;
   for (let _i = 0; _i < N; _i++) if (SIM.I_local[_i] > maxI) maxI = SIM.I_local[_i];
 
@@ -1491,8 +1577,20 @@ function render() {
       ctx.moveTo(px, py);
       ctx.lineTo(px + ax, py + ay);
       ctx.strokeStyle = `rgba(230,237,243,0.55)`;
-      ctx.lineWidth = 1.2;
+      ctx.lineWidth = 1.5;
       ctx.stroke();
+
+      if (v > 0.05) {
+        const angle = Math.atan2(ay, ax);
+        const headLength = 4.5;
+        ctx.beginPath();
+        ctx.moveTo(px + ax, py + ay);
+        ctx.lineTo(px + ax - headLength * Math.cos(angle - Math.PI/6), py + ay - headLength * Math.sin(angle - Math.PI/6));
+        ctx.lineTo(px + ax - headLength * Math.cos(angle + Math.PI/6), py + ay - headLength * Math.sin(angle + Math.PI/6));
+        ctx.closePath();
+        ctx.fillStyle = `rgba(230,237,243,0.65)`;
+        ctx.fill();
+      }
     }
   }
 
@@ -1504,34 +1602,85 @@ function render() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SPARKLINE RENDERER
+// REAL-TIME CHART RENDERER
 // ─────────────────────────────────────────────────────────────────────────────
-function drawSparkline(canvasId, data, color) {
-  const c = document.getElementById(canvasId);
+function drawRealTimeChart() {
+  const c = document.getElementById('rtChart');
   if (!c) return;
   c.width = c.parentElement.clientWidth;
   const cx = c.getContext('2d');
   const W = c.width, H = c.height;
+
   cx.clearRect(0, 0, W, H);
-  if (data.length < 2) return;
 
-  const min = -1, max = 1;
-  const scaleY = (v) => H - 2 - ((v - min)/(max - min)) * (H - 4);
+  // Background
+  cx.fillStyle = '#0d1117';
+  cx.fillRect(0, 0, W, H);
 
-  // Zero line
-  cx.strokeStyle = '#30363d'; cx.lineWidth = 0.5;
-  cx.beginPath();
-  cx.moveTo(0, scaleY(0)); cx.lineTo(W, scaleY(0)); cx.stroke();
+  const len = SIM.hist_polar.length;
+  const padL = 30, padR = 10, padT = 18, padB = 18;
+  const chartW = W - padL - padR;
+  const chartH = H - padT - padB;
 
-  // Data line
-  cx.strokeStyle = color; cx.lineWidth = 1.5;
-  cx.beginPath();
-  const step = W / (data.length - 1);
-  for (let i = 0; i < data.length; i++) {
-    const x = i * step, y = scaleY(Math.max(min, Math.min(max, data[i])));
-    i === 0 ? cx.moveTo(x, y) : cx.lineTo(x, y);
+  // Border
+  cx.strokeStyle = '#30363d'; cx.lineWidth = 1;
+  cx.strokeRect(padL, padT, chartW, chartH);
+
+  // Y-axis grid
+  cx.strokeStyle = 'rgba(48,54,61,0.4)';
+  cx.lineWidth = 0.5;
+  cx.fillStyle = '#8b949e';
+  cx.font = '8px monospace';
+  cx.textAlign = 'right';
+  cx.textBaseline = 'middle';
+
+  for (let val = 0.0; val <= 1.01; val += 0.2) {
+    const y = padT + chartH * (1.0 - val);
+    cx.beginPath();
+    cx.moveTo(padL, y);
+    cx.lineTo(padL + chartW, y);
+    cx.stroke();
+    cx.fillText(val.toFixed(1), padL - 5, y);
   }
-  cx.stroke();
+
+  if (len < 2) return;
+
+  // Plot lines
+  const series = [
+    { data: SIM.hist_polar,     color: '#58a6ff', label: 'Φ_polar' },
+    { data: SIM.hist_transport, color: '#3fb950', label: 'Φ_transport' },
+    { data: SIM.hist_occupancy, color: '#d2a8ff', label: 'Occupancy' }
+  ];
+
+  const stepX = chartW / (SIM.MAX_HIST - 1);
+  const startIdx = Math.max(0, SIM.MAX_HIST - len);
+
+  for (const s of series) {
+    cx.strokeStyle = s.color;
+    cx.lineWidth = 1.5;
+    cx.beginPath();
+    for (let i = 0; i < s.data.length; i++) {
+      const x = padL + (startIdx + i) * stepX;
+      const val = Math.max(0, Math.min(1, s.data[i]));
+      const y = padT + chartH * (1.0 - val);
+      if (i === 0) cx.moveTo(x, y);
+      else cx.lineTo(x, y);
+    }
+    cx.stroke();
+  }
+
+  // Legend at top
+  let lx = padL + 8;
+  cx.textAlign = 'left';
+  cx.textBaseline = 'top';
+  cx.font = '9px monospace';
+  for (const s of series) {
+    cx.fillStyle = s.color;
+    cx.fillRect(lx, 4, 7, 7);
+    cx.fillStyle = '#8b949e';
+    cx.fillText(s.label, lx + 11, 3);
+    lx += 85;
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1563,10 +1712,8 @@ function animate() {
   document.getElementById('mTransport').style.color = obs.transport > 0.3 ? '#3fb950' : '#f78166';
   document.getElementById('mOccupancy').style.color = obs.occupancy > 0.05 ? '#d2a8ff' : '#8b949e';
 
-  // Sparklines
-  drawSparkline('sp1', SIM.hist_polar,     '#58a6ff');
-  drawSparkline('sp2', SIM.hist_transport, '#3fb950');
-  drawSparkline('sp3', SIM.hist_occupancy.map(v=>v*10), '#d2a8ff');
+  // Real-Time Chart
+  drawRealTimeChart();
 
   SIM.animId = requestAnimationFrame(animate);
 }
@@ -1598,6 +1745,7 @@ function resetSim() {
   if (SIM.running) { SIM.running = false; cancelAnimationFrame(SIM.animId); }
   initParticles();
   render();
+  drawRealTimeChart();
   document.getElementById('mPolar').textContent     = '—';
   document.getElementById('mTransport').textContent = '—';
   document.getElementById('mOccupancy').textContent = '—';
@@ -1622,9 +1770,7 @@ function stepOnce() {
   if (SIM.hist_polar.length > SIM.MAX_HIST) {
     SIM.hist_polar.shift(); SIM.hist_transport.shift(); SIM.hist_occupancy.shift();
   }
-  drawSparkline('sp1', SIM.hist_polar,     '#58a6ff');
-  drawSparkline('sp2', SIM.hist_transport, '#3fb950');
-  drawSparkline('sp3', SIM.hist_occupancy.map(v=>v*10), '#d2a8ff');
+  drawRealTimeChart();
 }
 
 function setStatus(type, msg) {
@@ -1732,6 +1878,17 @@ async function runPython() {
     // Draw metrics chart
     drawPyChart(data);
 
+    // Reload matplotlib cards with cache-buster
+    const cacheBuster = Date.now();
+    document.querySelectorAll('.plot-img').forEach(img => {
+      const src = img.getAttribute('src');
+      if (src) {
+        const cleanSrc = src.split('?')[0];
+        img.src = cleanSrc + '?t=' + cacheBuster;
+        img.style.display = 'block';
+      }
+    });
+
     // Update JS sim with final positions from Python
     if (data.final_pos && data.final_pos.length === SIM.N) {
       if (!SIM.x) initParticles();
@@ -1756,38 +1913,71 @@ async function runPython() {
 }
 
 function drawPyChart(data) {
+  // ── Also inject Python results into the real-time chart ──────────────────
+  if (data.polar_orders && data.polar_orders.length > 0) {
+    SIM.hist_polar     = [...data.polar_orders];
+    SIM.hist_transport = [...data.transport_effs];
+    SIM.hist_occupancy = [...data.occupancies];
+    if (SIM.hist_polar.length > SIM.MAX_HIST) {
+      SIM.hist_polar     = SIM.hist_polar.slice(-SIM.MAX_HIST);
+      SIM.hist_transport = SIM.hist_transport.slice(-SIM.MAX_HIST);
+      SIM.hist_occupancy = SIM.hist_occupancy.slice(-SIM.MAX_HIST);
+    }
+    drawRealTimeChart();
+  }
+
+  // ── Draw dedicated Python chart ───────────────────────────────────────────
   const c = document.getElementById('pyChart');
+  if (!c) return;
   c.width = c.parentElement.clientWidth;
   const cx = c.getContext('2d');
-  const W = c.width, H = 80;
-  cx.fillStyle = '#21262d';
+  const W = c.width, H = 100;
+  c.height = H;
+
+  cx.fillStyle = '#0d1117';
   cx.fillRect(0, 0, W, H);
+
+  const padL = 28, padR = 8, padT = 14, padB = 16;
+  const chartW = W - padL - padR;
+  const chartH = H - padT - padB;
+
+  // Grid
+  cx.strokeStyle = '#21262d'; cx.lineWidth = 0.5;
+  cx.fillStyle = '#8b949e'; cx.font = '8px monospace';
+  cx.textAlign = 'right'; cx.textBaseline = 'middle';
+  for (let v = 0; v <= 1.01; v += 0.25) {
+    const y = padT + chartH * (1 - v);
+    cx.beginPath(); cx.moveTo(padL, y); cx.lineTo(padL + chartW, y); cx.stroke();
+    cx.fillText(v.toFixed(2), padL - 3, y);
+  }
 
   const series = [
     { data: data.polar_orders,   color: '#58a6ff', label: 'Φ_polar' },
     { data: data.transport_effs, color: '#3fb950', label: 'Φ_transport' },
-    { data: data.occupancies.map(v=>v*10),    color: '#d2a8ff', label: 'Occ×10' },
+    { data: data.occupancies,    color: '#d2a8ff', label: 'Occupancy' },
   ];
 
-  for (const { data: d, color, label } of series) {
+  for (const { data: d, color } of series) {
     if (!d || d.length < 2) continue;
-    const step = (W - 2) / (d.length - 1);
+    const step = chartW / (d.length - 1);
     cx.strokeStyle = color; cx.lineWidth = 1.5;
     cx.beginPath();
-    for (let i=0;i<d.length;i++) {
-      const x = 1 + i*step;
-      const y = H - 2 - Math.max(-1,Math.min(1,d[i]+1))/2 * (H-4);
-      i===0 ? cx.moveTo(x,y) : cx.lineTo(x,y);
+    for (let i = 0; i < d.length; i++) {
+      const x = padL + i * step;
+      const val = Math.max(0, Math.min(1, d[i]));
+      const y = padT + chartH * (1 - val);
+      i === 0 ? cx.moveTo(x, y) : cx.lineTo(x, y);
     }
     cx.stroke();
   }
 
   // Legend
-  let lx = 4;
+  let lx = padL + 4;
+  cx.textAlign = 'left'; cx.textBaseline = 'top'; cx.font = '9px monospace';
   for (const { color, label } of series) {
-    cx.fillStyle = color; cx.fillRect(lx, H-12, 8, 8);
-    cx.fillStyle='#8b949e'; cx.font='9px monospace';
-    cx.fillText(label, lx+10, H-5); lx += 70;
+    cx.fillStyle = color; cx.fillRect(lx, 3, 7, 7);
+    cx.fillStyle = '#8b949e'; cx.fillText(label, lx + 10, 2);
+    lx += 90;
   }
 }
 
@@ -1871,7 +2061,7 @@ function setSlider(id, val) {
   el.dispatchEvent(new Event('input'));
 }
 
-function loadPreset(name) {
+function loadPreset(name, autoPlay = true) {
   const wasRunning = SIM.running;
   if (SIM.running) { SIM.running = false; cancelAnimationFrame(SIM.animId); }
 
@@ -1931,11 +2121,95 @@ function loadPreset(name) {
   SIM.N = p.N;
   initParticles();
   render();
-  setStatus('idle', `Loaded preset: ${name} — press ▶ Play`);
+  drawRealTimeChart();
+  setStatus('idle', `Loaded preset: ${name}`);
+  if (autoPlay && !SIM.running) {
+    togglePlay();
+  }
+}
+
+async function runPyAndRefreshCard() {
+  const btn     = document.getElementById('btnTsRun');
+  const spinner = document.getElementById('tsSpinner');
+  const img     = document.getElementById('imgTimeseries');
+  const card    = document.getElementById('cardTimeseries');
+
+  // Load demo preset parameters into SIM (no auto-play — we're running Python instead)
+  loadPreset('demo', false);
+
+  // Show spinner, hide image, disable button
+  btn.disabled = true;
+  btn.textContent = '⏳ Running…';
+  spinner.style.display = 'block';
+  img.style.opacity = '0.3';
+
+  // Scroll to card
+  card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+  // Build request body matching current SIM state
+  const body = {
+    N: SIM.N, L: SIM.L, J: SIM.J, eta: SIM.eta, alpha: SIM.alpha,
+    v_max: SIM.v_max, R_align: SIM.R_align,
+    I_emit: SIM.I_emit, sigma_rad: SIM.sigma_rad,
+    sigma_chiral: SIM.sigma_chiral, kappa_T: SIM.kappa_T,
+    obs_radius: SIM.obs_radius, shadow_fraction: SIM.shadow_fraction,
+    obstacle_type: 'none',
+    n_steps: 800, record_every: 4, seed: 42,
+  };
+
+  try {
+    const res  = await fetch('/api/simulate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    // Refresh the timeseries image (backend regenerated it)
+    const t = Date.now();
+    img.src = '/plots/demo_timeseries.png?t=' + t;
+    img.style.opacity = '1';
+    img.style.display = 'block';
+
+    // Also refresh snapshot image
+    const snap = document.getElementById('imgSnapshot');
+    if (snap) { snap.src = '/plots/demo_snapshot.png?t=' + t; snap.style.display = 'block'; }
+
+    // Feed Python data into the real-time chart
+    if (data.polar_orders) {
+      SIM.hist_polar     = [...data.polar_orders];
+      SIM.hist_transport = [...data.transport_effs];
+      SIM.hist_occupancy = [...data.occupancies];
+      drawRealTimeChart();
+    }
+
+    btn.textContent = '✅ Done — Re-run';
+  } catch (err) {
+    btn.textContent = '❌ Error — Retry';
+    console.error('runPyAndRefreshCard:', err);
+  } finally {
+    btn.disabled = false;
+    spinner.style.display = 'none';
+    img.style.opacity = '1';
+  }
 }
 
 function scrollToSim() {
-  document.getElementById('sim').scrollIntoView({ behavior:'smooth' });
+  document.getElementById('sim').scrollIntoView({ behavior: 'smooth' });
+}
+
+function openModal(imgId) {
+  const img = document.getElementById(imgId);
+  if (!img) return;
+  const modal = document.getElementById('imgModal');
+  const modalImg = document.getElementById('imgModalEl');
+  modal.style.display = 'flex';
+  modalImg.src = img.src;
+}
+
+function closeModal() {
+  document.getElementById('imgModal').style.display = 'none';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
